@@ -1,0 +1,41 @@
+.header {
+  background-color: var(--accent-bg);
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(85, 30, 25, 0.1);
+}
+
+.title {
+  color: var(--primary);
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin: 0;
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.userName {
+  font-family: var(--font-sans);
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--secondary);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-family: var(--font-sans);
+}

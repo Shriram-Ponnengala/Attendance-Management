@@ -1,0 +1,72 @@
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import bcrypt from 'bcryptjs';
+
+export async function GET(request: Request) {
+  try {
+    const role = request.headers.get('x-user-role');
+    if (role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const filterRole = searchParams.get('role');
+
+    const users = await prisma.user.findMany({
+      where: filterRole ? { role: filterRole as any } : undefined,
+      select: {
+        id: true,
+        username: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return NextResponse.json(users);
+  } catch (error) {
+    console.error('Fetch users error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const userRole = request.headers.get('x-user-role');
+    if (userRole !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    const { username, password, role } = await request.json();
+
+    if (!username || !password || !role) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { username } });
+    if (existingUser) {
+      return NextResponse.json({ error: 'Username already exists' }, { status: 400 });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = await prisma.user.create({
+      data: {
+        username,
+        passwordHash: hashedPassword,
+        role,
+      },
+      select: {
+        id: true,
+        username: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json(newUser, { status: 201 });
+  } catch (error) {
+    console.error('Create user error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

@@ -1,0 +1,19 @@
+.layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--base-bg);
+}
+
+.mainContent {
+  flex: 1;
+  margin-left: 250px; /* Width of sidebar */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.pageContent {
+  flex: 1;
+  padding: 2rem;
+  background-color: rgba(247, 213, 180, 0.05); /* very soft background for contrast with white cards */
+}
