@@ -82,7 +82,14 @@ export function useCoaches() {
 
   const saveCoaches = (newCoaches: Coach[]) => {
     setCoaches(newCoaches);
-    localStorage.setItem('vca_coaches', JSON.stringify(newCoaches));
+    try {
+      localStorage.setItem('vca_coaches', JSON.stringify(newCoaches));
+    } catch (error) {
+      console.error('Failed to save coaches to localStorage:', error);
+      if (error instanceof Error && error.name === 'QuotaExceededError') {
+        alert('Local storage is full! Some changes might not persist after refreshing.');
+      }
+    }
   };
 
   const addCoach = (coachData: Omit<Coach, 'id' | 'memberSince'>) => {

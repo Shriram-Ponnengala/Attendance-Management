@@ -59,11 +59,16 @@ export default function StudentsPage() {
 
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (confirm('Are you sure you want to delete this student?')) {
-      deleteStudent(id);
-      setToastMessage('Student deleted successfully!');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
+    if (window.confirm('Are you sure you want to delete this student?')) {
+      try {
+        deleteStudent(id);
+        setToastMessage('Student deleted successfully!');
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
+      } catch (error) {
+        console.error('Delete failed:', error);
+        alert('Failed to delete student. Your storage might be full.');
+      }
     }
     setActiveMenu(null);
   };

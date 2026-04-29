@@ -104,7 +104,14 @@ export function useStudents() {
 
   const saveStudents = (newStudents: Student[]) => {
     setStudents(newStudents);
-    localStorage.setItem('vca_students', JSON.stringify(newStudents));
+    try {
+      localStorage.setItem('vca_students', JSON.stringify(newStudents));
+    } catch (error) {
+      console.error('Failed to save students to localStorage:', error);
+      if (error instanceof Error && error.name === 'QuotaExceededError') {
+        alert('Local storage is full! Some changes might not persist after refreshing.');
+      }
+    }
   };
 
   const addStudent = (studentData: Omit<Student, 'id' | 'name' | 'parentName' | 'memberSince' | 'status'>) => {

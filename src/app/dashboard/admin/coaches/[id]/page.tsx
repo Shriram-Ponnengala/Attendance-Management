@@ -63,9 +63,14 @@ export default function CoachProfilePage() {
   };
 
   const handleDelete = () => {
-    if (confirm(`Delete ${coach.name}?\nThis coach will be removed from all assigned batches.\nThis action cannot be undone.`)) {
-      deleteCoach(coach.id);
-      router.push('/dashboard/admin/coaches');
+    if (window.confirm(`Delete ${coach.name}?\nThis coach will be removed from all assigned batches.\nThis action cannot be undone.`)) {
+      try {
+        deleteCoach(coach.id);
+        router.push('/dashboard/admin/coaches');
+      } catch (error) {
+        console.error('Delete failed:', error);
+        alert('Failed to delete coach. Your storage might be full.');
+      }
     }
   };
 

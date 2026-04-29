@@ -229,27 +229,27 @@ export default function SettingsPage() {
                 </div>
                 <div className={styles.card}>
                   <h3 className={styles.cardTitle}>Security</h3>
-                  <div className={styles.form}>
+                  <form className={styles.form} onSubmit={(e) => { e.preventDefault(); handlePasswordChange(); }}>
                     <div className={styles.fieldGroup}>
                       <label>CURRENT PASSWORD</label>
-                      <input type="password" placeholder="••••••••" className={styles.input} />
+                      <input type="password" name="current-password" placeholder="••••••••" className={styles.input} autoComplete="current-password" />
                     </div>
                     <div className={styles.fieldGroup}>
                       <label>NEW PASSWORD</label>
-                      <input type="password" placeholder="••••••••" className={styles.input} />
+                      <input type="password" name="new-password" placeholder="••••••••" className={styles.input} autoComplete="new-password" />
                     </div>
                     <div className={styles.fieldGroup}>
                       <label>CONFIRM PASSWORD</label>
-                      <input type="password" placeholder="••••••••" className={styles.input} />
+                      <input type="password" name="confirm-password" placeholder="••••••••" className={styles.input} autoComplete="new-password" />
                     </div>
                     <Button 
+                      type="submit"
                       variant="secondary" 
                       className={styles.changePasswordBtn}
-                      onClick={handlePasswordChange}
                     >
                       Change Password
                     </Button>
-                  </div>
+                  </form>
                 </div>
               </div>
             </div>

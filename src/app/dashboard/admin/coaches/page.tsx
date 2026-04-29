@@ -60,11 +60,16 @@ export default function CoachesPage() {
 
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (confirm('Are you sure you want to delete this coach?')) {
-      deleteCoach(id);
-      setToastMessage('Coach deleted successfully!');
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
+    if (window.confirm('Are you sure you want to delete this coach?')) {
+      try {
+        deleteCoach(id);
+        setToastMessage('Coach deleted successfully!');
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
+      } catch (error) {
+        console.error('Delete failed:', error);
+        alert('Failed to delete coach. Your storage might be full.');
+      }
     }
   };
 

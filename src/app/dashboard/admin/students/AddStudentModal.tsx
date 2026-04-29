@@ -48,9 +48,9 @@ export function AddStudentModal({ isOpen, onClose, onSave, initialData }: AddStu
           secParentFirstName: initialData.secParentFirstName || '',
           secParentMiddleName: initialData.secParentMiddleName || '',
           secParentLastName: initialData.secParentLastName || '',
-          studentFirstName: initialData.studentFirstName || '',
-          studentMiddleName: initialData.studentMiddleName || '',
-          studentLastName: initialData.studentLastName || '',
+          studentFirstName: initialData.studentFirstName || initialData.firstName || '',
+          studentMiddleName: initialData.studentMiddleName || initialData.middleName || '',
+          studentLastName: initialData.studentLastName || initialData.lastName || '',
           dob: initialData.dob || '',
           country: initialData.country || '',
           city: initialData.city || ''
@@ -116,7 +116,14 @@ export function AddStudentModal({ isOpen, onClose, onSave, initialData }: AddStu
 
   const handleSave = () => {
     if (validate()) {
-      onSave(formData);
+      // Remap field names to match useStudents hook expectations
+      const submittedData = {
+        ...formData,
+        firstName: formData.studentFirstName,
+        middleName: formData.studentMiddleName,
+        lastName: formData.studentLastName,
+      };
+      onSave(submittedData);
     }
   };
 

@@ -101,7 +101,14 @@ export function useBatches() {
 
   const saveBatches = (newBatches: Batch[]) => {
     setBatches(newBatches);
-    localStorage.setItem('vca_batches', JSON.stringify(newBatches));
+    try {
+      localStorage.setItem('vca_batches', JSON.stringify(newBatches));
+    } catch (error) {
+      console.error('Failed to save batches to localStorage:', error);
+      if (error instanceof Error && error.name === 'QuotaExceededError') {
+        alert('Local storage is full! Some changes might not persist after refreshing.');
+      }
+    }
   };
 
   const addBatch = (batch: Omit<Batch, 'id' | 'students' | 'history' | 'status'>) => {

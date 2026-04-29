@@ -10,8 +10,7 @@ import {
   GraduationCap, 
   Layers, 
   Settings, 
-  LogOut,
-  ClipboardCheck
+  LogOut
 } from 'lucide-react';
 import Image from 'next/image';
 import styles from './Sidebar.module.css';
@@ -30,6 +29,7 @@ export function Sidebar({ role, username }: SidebarProps) {
     { name: 'Students', href: '/dashboard/admin/students', icon: Users },
     { name: 'Coaches', href: '/dashboard/admin/coaches', icon: GraduationCap },
     { name: 'Batches', href: '/dashboard/admin/batches', icon: Layers },
+    { name: 'Users', href: '/dashboard/admin/users', icon: Users },
     { name: 'Settings', href: '/dashboard/admin/settings', icon: Settings },
   ];
 
