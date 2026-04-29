@@ -2,7 +2,7 @@ import React from 'react';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { Header } from '@/components/layout/Header';
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import styles from './layout.module.css';
 
 export default async function DashboardLayout({
@@ -26,13 +26,13 @@ export default async function DashboardLayout({
 
   return (
     <div className={styles.layout}>
-      <Sidebar role={role} />
-      <div className={styles.mainContent}>
-        <Header title="Dashboard" userName={username} />
-        <main className={styles.pageContent}>
+      <Sidebar role={role} username={username} />
+      <main className={styles.mainContent}>
+        <div className={styles.pageContent}>
+          <Breadcrumbs />
           {children}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

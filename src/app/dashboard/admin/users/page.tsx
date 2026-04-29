@@ -3,27 +3,77 @@
 import React, { useState, useEffect } from 'react';
 import { UserPlus, Search, Edit2, Trash2, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
+import { useUsers, User } from '@/lib/hooks/useUsers';
 import styles from './users.module.css';
 
 export default function UsersPage() {
+  const { users, isLoaded, addUser, updateUser, deleteUser } = useUsers();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [users, setUsers] = useState([
-    { id: '1', username: 'shriram_p', role: 'STUDENT', createdAt: '2026-04-20' },
-    { id: '2', username: 'coach_vikram', role: 'COACH', createdAt: '2026-04-15' },
-    { id: '3', username: 'admin_user', role: 'ADMIN', createdAt: '2026-04-01' },
-    { id: '4', username: 'priya_m', role: 'COACH', createdAt: '2026-04-18' },
-    { id: '5', username: 'rahul_s', role: 'STUDENT', createdAt: '2026-04-22' },
-  ]);
-
+  const [editingUser, setEditingUser] = useState<User | null>(null);
   const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'ALL' | 'ADMIN' | 'COACH' | 'STUDENT'>('ALL');
+  
+  const [formData, setFormData] = useState({
+    username: '',
+    role: 'STUDENT',
+    password: ''
+  });
 
-  const filteredUsers = users.filter(user => 
-    user.username.toLowerCase().includes(search.toLowerCase()) ||
-    user.role.toLowerCase().includes(search.toLowerCase())
-  );
+  useEffect(() => {
+    if (editingUser) {
+      setFormData({
+        username: editingUser.username,
+        role: editingUser.role,
+        password: '' // Don't show password
+      });
+    } else {
+      setFormData({
+        username: '',
+        role: 'STUDENT',
+        password: ''
+      });
+    }
+  }, [editingUser, isModalOpen]);
+
+  const handleEdit = (user: User) => {
+    setEditingUser(user);
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Are you sure you want to delete this user?')) {
+      deleteUser(id);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingUser) {
+      updateUser(editingUser.id, { 
+        username: formData.username, 
+        role: formData.role as any 
+      });
+      alert('User updated successfully!');
+    } else {
+      addUser({ 
+        username: formData.username, 
+        role: formData.role as any 
+      });
+      alert('User created successfully!');
+    }
+    setIsModalOpen(false);
+    setEditingUser(null);
+  };
+
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.username.toLowerCase().includes(search.toLowerCase());
+    const matchesRole = roleFilter === 'ALL' || user.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
+
+  if (!isLoaded) return <div className={styles.container}>Loading...</div>;
 
   return (
     <div className={styles.container}>
@@ -32,7 +82,7 @@ export default function UsersPage() {
           <h1 className={styles.title}>User Management</h1>
           <p className={styles.subtitle}>Manage all academy members and their roles.</p>
         </div>
-        <Button className={styles.addBtn} onClick={() => setIsModalOpen(true)}>
+        <Button className={styles.addBtn} onClick={() => { setEditingUser(null); setIsModalOpen(true); }}>
           <UserPlus size={18} />
           Add New User
         </Button>
@@ -49,11 +99,21 @@ export default function UsersPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <Button variant="outline" className={styles.filterBtn}>
-          <Filter size={18} />
-          Filter
-        </Button>
+        <div className={styles.roleFilterWrapper}>
+          <select 
+            className={styles.roleFilterSelect}
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value as any)}
+          >
+            <option value="ALL">All Roles</option>
+            <option value="ADMIN">Admins</option>
+            <option value="COACH">Coaches</option>
+            <option value="STUDENT">Students</option>
+          </select>
+          <Filter size={18} className={styles.filterIcon} />
+        </div>
       </div>
+
 
       <div className={styles.tableWrapper}>
         <table className={styles.table}>
@@ -77,17 +137,25 @@ export default function UsersPage() {
                   </div>
                 </td>
                 <td>
-                  <Badge variant={user.role === 'ADMIN' ? 'success' : user.role === 'COACH' ? 'info' : 'warning'}>
+                  <Badge variant={user.role === 'ADMIN' ? 'admin' : user.role === 'COACH' ? 'coach' : 'student'}>
                     {user.role}
                   </Badge>
                 </td>
                 <td>{user.createdAt}</td>
                 <td>
                   <div className={styles.actions}>
-                    <button className={styles.actionBtn} title="Edit">
+                    <button 
+                      className={styles.actionBtn} 
+                      title="Edit"
+                      onClick={() => handleEdit(user)}
+                    >
                       <Edit2 size={16} />
                     </button>
-                    <button className={styles.actionBtnDelete} title="Delete">
+                    <button 
+                      className={styles.actionBtnDelete} 
+                      title="Delete"
+                      onClick={() => handleDelete(user.id)}
+                    >
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -97,6 +165,54 @@ export default function UsersPage() {
           </tbody>
         </table>
       </div>
+
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        title={editingUser ? 'Edit User' : 'Add New User'}
+      >
+        <form className={styles.modalForm} onSubmit={handleSubmit}>
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Username</label>
+            <input 
+              type="text" 
+              placeholder="e.g. johndoe" 
+              className={styles.input} 
+              required 
+              value={formData.username}
+              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Role</label>
+            <select 
+              className={styles.select} 
+              required
+              value={formData.role}
+              onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+            >
+              <option value="STUDENT">Student</option>
+              <option value="COACH">Coach</option>
+              <option value="ADMIN">Admin</option>
+            </select>
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.label}>{editingUser ? 'New Password (Optional)' : 'Password'}</label>
+            <input 
+              type="password" 
+              placeholder="••••••••" 
+              className={styles.input} 
+              required={!editingUser}
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            />
+          </div>
+          <Button type="submit" className={styles.saveBtn}>
+            {editingUser ? 'Update User' : 'Create User'}
+          </Button>
+        </form>
+      </Modal>
     </div>
   );
 }
+

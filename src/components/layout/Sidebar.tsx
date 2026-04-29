@@ -3,75 +3,87 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Calendar, BookOpen, LogOut, CheckSquare } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  BookOpen, 
+  Users, 
+  GraduationCap, 
+  Layers, 
+  Settings, 
+  LogOut,
+  ClipboardCheck
+} from 'lucide-react';
+import Image from 'next/image';
 import styles from './Sidebar.module.css';
 
 interface SidebarProps {
   role: 'ADMIN' | 'COACH' | 'STUDENT';
+  username: string;
 }
 
-export function Sidebar({ role }: SidebarProps) {
+export function Sidebar({ role, username }: SidebarProps) {
   const pathname = usePathname();
 
   const adminLinks = [
-    { href: '/dashboard/admin', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/dashboard/admin/users', label: 'Users', icon: Users },
-    { href: '/dashboard/admin/classes', label: 'Classes', icon: Calendar },
-    { href: '/dashboard/admin/materials', label: 'Materials', icon: BookOpen },
+    { name: 'Dashboard', href: '/dashboard/admin', icon: LayoutDashboard },
+    { name: 'Programs', href: '/dashboard/admin/programs', icon: BookOpen },
+    { name: 'Students', href: '/dashboard/admin/students', icon: Users },
+    { name: 'Coaches', href: '/dashboard/admin/coaches', icon: GraduationCap },
+    { name: 'Batches', href: '/dashboard/admin/batches', icon: Layers },
+    { name: 'Settings', href: '/dashboard/admin/settings', icon: Settings },
   ];
-
-  const coachLinks = [
-    { href: '/dashboard/coach', label: 'My Classes', icon: Calendar },
-    { href: '/dashboard/coach/attendance', label: 'Mark Attendance', icon: CheckSquare },
-  ];
-
-  const studentLinks = [
-    { href: '/dashboard/student', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/dashboard/student/attendance', label: 'My Attendance', icon: CheckSquare },
-    { href: '/dashboard/student/materials', label: 'Study Materials', icon: BookOpen },
-  ];
-
-  let links = studentLinks;
-  if (role === 'ADMIN') links = adminLinks;
-  if (role === 'COACH') links = coachLinks;
 
   const handleLogout = async () => {
-    // We will implement this later with auth
-    window.location.href = '/';
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Logout failed:', error);
+      window.location.href = '/';
+    }
   };
 
   return (
     <aside className={styles.sidebar}>
-      <div className={styles.logoContainer}>
-        {/* Placeholder for logo */}
-        <div style={{ width: 32, height: 32, backgroundColor: 'var(--secondary)', borderRadius: '50%' }} />
-        <span className={styles.logoText}>Venture Chess</span>
+      <div className={styles.logoSection}>
+        <div className={styles.logoImage}>
+          <Image 
+            src="/vca_logo.png" 
+            alt="VCA Logo" 
+            width={40} 
+            height={40} 
+            className={styles.avatar}
+          />
+        </div>
+        <div className={styles.logoText}>
+          <span className={styles.venture}>Venture</span>
+          <span className={styles.chess}>CHESS</span>
+        </div>
       </div>
-      
+
       <nav className={styles.nav}>
-        {links.map((link) => {
+        {adminLinks.map((link) => {
           const Icon = link.icon;
-          const isActive = pathname === link.href || pathname.startsWith(link.href + '/');
-          
+          const isActive = link.href === '/dashboard/admin' 
+            ? pathname === '/dashboard/admin' 
+            : pathname.startsWith(link.href);
           return (
             <Link 
-              key={link.href} 
-              href={link.href} 
-              className={`${styles.navLink} ${isActive ? styles.active : ''}`}
+              key={link.name} 
+              href={link.href}
+              className={`${styles.navItem} ${isActive ? styles.active : ''}`}
             >
               <Icon size={20} />
-              {link.label}
+              <span>{link.name}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className={styles.footer}>
-        <button onClick={handleLogout} className={styles.logoutBtn}>
-          <LogOut size={20} />
-          Sign Out
-        </button>
-      </div>
+      <button className={styles.signOut} onClick={handleLogout}>
+        <LogOut size={20} />
+        <span>Sign Out</span>
+      </button>
     </aside>
   );
 }

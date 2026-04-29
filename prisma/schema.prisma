@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,24 +6,16 @@ datasource db {
   provider = "postgresql"
 }
 
-enum Role {
-  ADMIN
-  COACH
-  STUDENT
-}
-
 model User {
-  id            String       @id @default(uuid())
-  username      String       @unique
-  passwordHash  String
-  role          Role
-  createdAt     DateTime     @default(now())
-
-  // Relations
-  classes       Class[]      @relation("ClassCoach")
-  enrollments   Enrollment[]
-  attendance    Attendance[] @relation("StudentAttendance")
-  materials     Material[]
+  id           String       @id @default(uuid())
+  username     String       @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime     @default(now())
+  attendance   Attendance[] @relation("StudentAttendance")
+  classes      Class[]      @relation("ClassCoach")
+  enrollments  Enrollment[]
+  materials    Material[]
 }
 
 model Class {
@@ -37,11 +24,9 @@ model Class {
   coachId      String
   scheduleTime String
   createdAt    DateTime     @default(now())
-
-  // Relations
+  attendance   Attendance[]
   coach        User         @relation("ClassCoach", fields: [coachId], references: [id])
   enrollments  Enrollment[]
-  attendance   Attendance[]
   materials    Material[]
 }
 
@@ -49,10 +34,8 @@ model Enrollment {
   id        String @id @default(uuid())
   studentId String
   classId   String
-
-  // Relations
-  student   User   @relation(fields: [studentId], references: [id])
   class     Class  @relation(fields: [classId], references: [id])
+  student   User   @relation(fields: [studentId], references: [id])
 
   @@unique([studentId, classId])
 }
@@ -62,11 +45,9 @@ model Attendance {
   classId   String
   studentId String
   date      DateTime @db.Date
-  status    String   // "PRESENT" or "ABSENT"
+  status    String
   markedBy  String
   timestamp DateTime @default(now())
-
-  // Relations
   class     Class    @relation(fields: [classId], references: [id])
   student   User     @relation("StudentAttendance", fields: [studentId], references: [id])
 
@@ -80,8 +61,12 @@ model Material {
   classId    String?
   uploadedBy String
   createdAt  DateTime @default(now())
-
-  // Relations
   class      Class?   @relation(fields: [classId], references: [id])
   uploader   User     @relation(fields: [uploadedBy], references: [id])
+}
+
+enum Role {
+  ADMIN
+  COACH
+  STUDENT
 }

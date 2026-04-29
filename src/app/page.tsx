@@ -43,7 +43,7 @@ export default function LoginPage() {
     <main className={styles.container}>
       <div className={styles.card}>
         <div className={styles.header}>
-          <h1 className={styles.title}>Venture Chess</h1>
+          <h1 className={styles.title}>Venture Chess Academy</h1>
           <p className={styles.subtitle}>Sign in to your account</p>
         </div>
 

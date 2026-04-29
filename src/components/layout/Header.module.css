@@ -1,41 +1,37 @@
 .header {
-  background-color: var(--accent-bg);
-  padding: 1rem 2rem;
+  background-color: #ffffff;
+  padding: 1.5rem 2.5rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid rgba(85, 30, 25, 0.1);
+  justify-content: flex-end; /* Move user info to right */
+  border-bottom: none;
 }
 
+/* Hide the title in the header as it's handled in the dashboard content */
 .title {
-  color: var(--primary);
-  font-family: var(--font-serif);
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin: 0;
+  display: none;
 }
 
 .userInfo {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .userName {
-  font-family: var(--font-sans);
-  color: var(--primary);
-  font-weight: 500;
+  display: none; /* Hide name to match screenshot exactly */
 }
 
 .avatar {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background-color: var(--secondary);
+  background-color: var(--muted);
   color: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
+  font-weight: 700;
   font-family: var(--font-sans);
+  border: 1px solid rgba(85, 30, 25, 0.05);
 }

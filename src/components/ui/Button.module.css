@@ -3,30 +3,33 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: var(--radius-sm);
-  font-weight: 500;
-  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-weight: 600;
+  padding: 0.625rem 1.25rem;
   transition: all 0.2s ease;
   font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  border: 1px solid transparent;
 }
 
 .primary {
   background-color: var(--primary);
-  color: var(--base-bg);
+  color: #ffffff;
 }
 
 .primary:hover {
-  background-color: var(--primary-hover);
+  background-color: #3d1512;
+  box-shadow: 0 4px 12px rgba(85, 30, 25, 0.2);
 }
 
 .secondary {
-  background-color: var(--base-bg);
+  background-color: #ffffff;
   color: var(--primary);
   border: 1px solid var(--primary);
 }
 
 .secondary:hover {
-  background-color: var(--accent-bg);
+  background-color: var(--cream);
 }
 
 .accent {
@@ -35,7 +38,8 @@
 }
 
 .accent:hover {
-  background-color: var(--secondary-hover);
+  background-color: #d9a16d;
+  box-shadow: 0 4px 12px rgba(230, 177, 126, 0.2);
 }
 
 .ghost {
@@ -44,7 +48,7 @@
 }
 
 .ghost:hover {
-  background-color: rgba(85, 30, 25, 0.05);
+  background-color: var(--cream);
 }
 
 .disabled {
@@ -54,5 +58,5 @@
 
 .icon {
   padding: 0.5rem;
-  border-radius: 50%;
+  aspect-ratio: 1/1;
 }
