@@ -17,25 +17,11 @@ export default function CoachesPage() {
   const [toastMessage, setToastMessage] = useState('');
 
   const handleSaveCoach = (data: any) => {
-    const fullName = `${data.firstName} ${data.middleName ? data.middleName + ' ' : ''}${data.lastName}`;
-    const initials = (data.firstName[0] + data.lastName[0]).toUpperCase();
-    
     const coachData = {
-      firstName: data.firstName,
-      middleName: data.middleName,
-      lastName: data.lastName,
-      name: fullName,
+      ...data,
       specialization: data.bio || 'Coach',
-      email: data.email,
       phone: `${data.countryCode} ${data.mobile}`,
-      initials: initials,
-      photo: data.photo,
-      countryCode: data.countryCode,
-      mobile: data.mobile,
-      country: data.country,
-      city: data.city,
-      bio: data.bio,
-      dob: data.dob
+      initials: (data.firstName[0] + data.lastName[0]).toUpperCase(),
     };
 
     if (editingCoach) {

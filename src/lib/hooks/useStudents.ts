@@ -87,69 +87,77 @@ export function useStudents() {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('vca_students');
-    if (stored) {
-      try {
-        setStudents(JSON.parse(stored));
-      } catch (e) {
-        setStudents(INITIAL_STUDENTS);
-      }
-    } else {
-      setStudents(INITIAL_STUDENTS);
-      localStorage.setItem('vca_students', JSON.stringify(INITIAL_STUDENTS));
+  const fetchStudents = async () => {
+    try {
+      const res = await fetch('/api/users?role=STUDENT');
+      if (!res.ok) throw new Error('Failed to fetch students');
+      const data = await res.json();
+      const mapped = data.map((u: any) => ({
+        ...u,
+        name: `${u.firstName || ''} ${u.middleName ? u.middleName + ' ' : ''}${u.lastName || ''}`.trim() || u.username,
+        parentName: `${u.parentFirstName || ''} ${u.parentMiddleName ? u.parentMiddleName + ' ' : ''}${u.parentLastName || ''}`.trim(),
+        memberSince: u.createdAt ? u.createdAt.split('T')[0] : '',
+        status: u.status || 'active'
+      }));
+      setStudents(mapped);
+      setIsLoaded(true);
+    } catch (e) {
+      console.error('Fetch students error:', e);
+      setIsLoaded(true);
     }
-    setIsLoaded(true);
+  };
+
+  useEffect(() => {
+    fetchStudents();
   }, []);
 
-  const saveStudents = (newStudents: Student[]) => {
-    setStudents(newStudents);
+  const addStudent = async (studentData: Omit<Student, 'id' | 'name' | 'parentName' | 'memberSince' | 'status'>) => {
     try {
-      localStorage.setItem('vca_students', JSON.stringify(newStudents));
-    } catch (error) {
-      console.error('Failed to save students to localStorage:', error);
-      if (error instanceof Error && error.name === 'QuotaExceededError') {
-        alert('Local storage is full! Some changes might not persist after refreshing.');
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...studentData,
+          username: studentData.email, // Use email as username
+          role: 'STUDENT'
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to add student');
       }
+      await fetchStudents();
+      return true;
+    } catch (error: any) {
+      alert(error.message);
+      return false;
     }
   };
 
-  const addStudent = (studentData: Omit<Student, 'id' | 'name' | 'parentName' | 'memberSince' | 'status'>) => {
-    const name = `${studentData.firstName} ${studentData.middleName ? studentData.middleName + ' ' : ''}${studentData.lastName}`;
-    const parentName = `${studentData.parentFirstName} ${studentData.parentMiddleName ? studentData.parentMiddleName + ' ' : ''}${studentData.parentLastName}`;
-    
-    const newStudent: Student = {
-      ...studentData,
-      id: `s${Date.now()}`,
-      name,
-      parentName,
-      status: 'active',
-      memberSince: new Date().toISOString().split('T')[0]
-    };
-    
-    saveStudents([...students, newStudent]);
-    return newStudent.id;
+  const updateStudent = async (id: string, updates: Partial<Student>) => {
+    try {
+      const res = await fetch(`/api/users/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) throw new Error('Failed to update student');
+      await fetchStudents();
+    } catch (error: any) {
+      alert(error.message);
+    }
   };
 
-  const updateStudent = (id: string, updates: Partial<Student>) => {
-    saveStudents(students.map(s => {
-      if (s.id === id) {
-        const updated = { ...s, ...updates };
-        // Recalculate full names if components changed
-        if (updates.firstName || updates.lastName || updates.middleName) {
-          updated.name = `${updated.firstName} ${updated.middleName ? updated.middleName + ' ' : ''}${updated.lastName}`;
-        }
-        if (updates.parentFirstName || updates.parentLastName || updates.parentMiddleName) {
-          updated.parentName = `${updated.parentFirstName} ${updated.parentMiddleName ? updated.parentMiddleName + ' ' : ''}${updated.parentLastName}`;
-        }
-        return updated;
-      }
-      return s;
-    }));
-  };
-
-  const deleteStudent = (id: string) => {
-    saveStudents(students.filter(s => s.id !== id));
+  const deleteStudent = async (id: string) => {
+    try {
+      const res = await fetch(`/api/users/${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete student');
+      setStudents(prev => prev.filter(s => s.id !== id));
+    } catch (error: any) {
+      alert(error.message);
+    }
   };
 
   return {
@@ -157,6 +165,7 @@ export function useStudents() {
     isLoaded,
     addStudent,
     updateStudent,
-    deleteStudent
+    deleteStudent,
+    refresh: fetchStudents
   };
 }

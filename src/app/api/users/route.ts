@@ -14,12 +14,6 @@ export async function GET(request: Request) {
 
     const users = await prisma.user.findMany({
       where: filterRole ? { role: filterRole as any } : undefined,
-      select: {
-        id: true,
-        username: true,
-        role: true,
-        createdAt: true,
-      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -37,9 +31,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const { username, password, role } = await request.json();
+    const body = await request.json();
+    const { username, password, role, ...profileData } = body;
 
-    if (!username || !password || !role) {
+    if (!username || !role) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -48,23 +43,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Username already exists' }, { status: 400 });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Use provided password or a default one
+    const defaultPassword = role === 'COACH' ? 'coach123' : 'student123';
+    const hashedPassword = await bcrypt.hash(password || defaultPassword, 10);
 
     const newUser = await prisma.user.create({
       data: {
         username,
         passwordHash: hashedPassword,
         role,
-      },
-      select: {
-        id: true,
-        username: true,
-        role: true,
-        createdAt: true,
+        ...profileData,
       },
     });
 
-    return NextResponse.json(newUser, { status: 201 });
+    const { passwordHash: _, ...userWithoutPassword } = newUser;
+    return NextResponse.json(userWithoutPassword, { status: 201 });
   } catch (error) {
     console.error('Create user error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

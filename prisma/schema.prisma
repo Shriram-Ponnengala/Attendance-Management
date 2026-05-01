@@ -12,6 +12,30 @@ model User {
   passwordHash String
   role         Role
   createdAt    DateTime     @default(now())
+
+  // Profile fields
+  firstName    String?
+  middleName   String?
+  lastName     String?
+  email        String?      @unique
+  mobile       String?
+  countryCode  String?
+  dob          String?
+  country      String?
+  city         String?
+  
+  // Student specific
+  parentFirstName    String?
+  parentMiddleName   String?
+  parentLastName     String?
+  secParentFirstName  String?
+  secParentMiddleName String?
+  secParentLastName   String?
+
+  // Coach specific
+  specialization String?
+  bio            String?
+
   attendance   Attendance[] @relation("StudentAttendance")
   classes      Class[]      @relation("ClassCoach")
   enrollments  Enrollment[]
@@ -22,7 +46,12 @@ model Class {
   id           String       @id @default(uuid())
   className    String
   coachId      String
-  scheduleTime String
+  program      String?      // e.g. "Pawn Batch"
+  type         String?      // "Group" or "One-on-One"
+  days         String[]     // e.g. ["SAT", "SUN"]
+  startTime    String?      // e.g. "10:00"
+  endTime      String?      // e.g. "11:00"
+  status       String       @default("active")
   createdAt    DateTime     @default(now())
   attendance   Attendance[]
   coach        User         @relation("ClassCoach", fields: [coachId], references: [id])
@@ -52,6 +81,16 @@ model Attendance {
   student   User     @relation("StudentAttendance", fields: [studentId], references: [id])
 
   @@unique([classId, studentId, date])
+}
+
+model Program {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  code        String?
+  order       Int      @default(0)
+  description String?
+  topics      Json?
+  createdAt   DateTime @default(now())
 }
 
 model Material {

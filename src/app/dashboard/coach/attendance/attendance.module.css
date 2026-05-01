@@ -5,8 +5,42 @@
 .header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 32px;
+}
+
+.batchSelectorWrapper {
+  margin-top: 12px;
+}
+
+.batchSelector {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+  min-width: 250px;
+}
+
+.batchSelector:focus {
+  border-color: var(--primary);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.saveMessage {
+  color: #10b981;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .title {
@@ -127,4 +161,20 @@
 
 .absentBtn:hover {
   background: #fee2e2;
+}
+
+.emptyText {
+  text-align: center;
+  padding: 40px;
+  color: #64748b;
+  font-style: italic;
+}
+
+.emptyState {
+  background: white;
+  padding: 60px;
+  border-radius: 16px;
+  text-align: center;
+  color: #64748b;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }

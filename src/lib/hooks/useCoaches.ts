@@ -65,49 +65,77 @@ export function useCoaches() {
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('vca_coaches');
-    if (stored) {
-      try {
-        setCoaches(JSON.parse(stored));
-      } catch (e) {
-        setCoaches(INITIAL_COACHES);
-      }
-    } else {
-      setCoaches(INITIAL_COACHES);
-      localStorage.setItem('vca_coaches', JSON.stringify(INITIAL_COACHES));
+  const fetchCoaches = async () => {
+    try {
+      const res = await fetch('/api/users?role=COACH');
+      if (!res.ok) throw new Error('Failed to fetch coaches');
+      const data = await res.json();
+      const mapped = data.map((u: any) => ({
+        ...u,
+        name: `${u.firstName || ''} ${u.middleName ? u.middleName + ' ' : ''}${u.lastName || ''}`.trim() || u.username,
+        initials: `${u.firstName?.[0] || ''}${u.lastName?.[0] || u.username?.[0] || ''}`.toUpperCase(),
+        memberSince: u.createdAt ? u.createdAt.split('T')[0] : '',
+        phone: u.mobile || u.phone || ''
+      }));
+      setCoaches(mapped);
+      setIsLoaded(true);
+    } catch (e) {
+      console.error('Fetch coaches error:', e);
+      setIsLoaded(true);
     }
-    setIsLoaded(true);
+  };
+
+  useEffect(() => {
+    fetchCoaches();
   }, []);
 
-  const saveCoaches = (newCoaches: Coach[]) => {
-    setCoaches(newCoaches);
+  const addCoach = async (coachData: Omit<Coach, 'id' | 'memberSince'>) => {
     try {
-      localStorage.setItem('vca_coaches', JSON.stringify(newCoaches));
-    } catch (error) {
-      console.error('Failed to save coaches to localStorage:', error);
-      if (error instanceof Error && error.name === 'QuotaExceededError') {
-        alert('Local storage is full! Some changes might not persist after refreshing.');
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...coachData,
+          username: coachData.email.split('@')[0], // Generate username from email
+          role: 'COACH'
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to add coach');
       }
+      await fetchCoaches();
+      return true;
+    } catch (error: any) {
+      alert(error.message);
+      return false;
     }
   };
 
-  const addCoach = (coachData: Omit<Coach, 'id' | 'memberSince'>) => {
-    const newCoach: Coach = {
-      ...coachData,
-      id: `c${Date.now()}`,
-      memberSince: new Date().toISOString().split('T')[0]
-    };
-    saveCoaches([...coaches, newCoach]);
-    return newCoach.id;
+  const updateCoach = async (id: string, updates: Partial<Coach>) => {
+    try {
+      const res = await fetch(`/api/users/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) throw new Error('Failed to update coach');
+      await fetchCoaches();
+    } catch (error: any) {
+      alert(error.message);
+    }
   };
 
-  const updateCoach = (id: string, updates: Partial<Coach>) => {
-    saveCoaches(coaches.map(c => c.id === id ? { ...c, ...updates } : c));
-  };
-
-  const deleteCoach = (id: string) => {
-    saveCoaches(coaches.filter(c => c.id !== id));
+  const deleteCoach = async (id: string) => {
+    try {
+      const res = await fetch(`/api/users/${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete coach');
+      setCoaches(prev => prev.filter(c => c.id !== id));
+    } catch (error: any) {
+      alert(error.message);
+    }
   };
 
   return {
@@ -115,6 +143,7 @@ export function useCoaches() {
     isLoaded,
     addCoach,
     updateCoach,
-    deleteCoach
+    deleteCoach,
+    refresh: fetchCoaches
   };
 }

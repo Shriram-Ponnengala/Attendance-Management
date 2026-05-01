@@ -16,13 +16,15 @@ export interface Batch {
   id: string;
   name: string;
   program: string;
-  coach: string;
+  coach?: string;
+  coachId: string;
   type: 'Group' | 'One-on-One';
   startDate: string;
   days: string[];
   startTime: string;
   endTime: string;
   students: string[]; // array of student IDs
+  studentDetails: { id: string; name: string }[];
   status: 'active' | 'inactive';
   history: BatchHistoryRecord[];
 }
@@ -33,6 +35,7 @@ const INITIAL_BATCHES: Batch[] = [
     name: 'Weekend Pawn Beginners',
     program: 'Pawn Batch',
     coach: 'Judit Polgar',
+    coachId: 'coach-1',
     type: 'Group',
     startDate: '2023-01-07',
     days: ['SAT', 'SUN'],
@@ -47,6 +50,7 @@ const INITIAL_BATCHES: Batch[] = [
     name: 'Advanced Rook Strategy',
     program: 'Rook Batch',
     coach: 'Magnus Carlsen',
+    coachId: 'coach-2',
     type: 'Group',
     startDate: '2023-01-04',
     days: ['WED', 'FRI'],
@@ -74,100 +78,122 @@ const INITIAL_BATCHES: Batch[] = [
 export function useBatches() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchBatches = async () => {
+    try {
+      const res = await fetch('/api/batches');
+      if (!res.ok) throw new Error('Failed to fetch batches');
+      const data = await res.json();
+      setBatches(data);
+      setIsLoaded(true);
+    } catch (err: any) {
+      setError(err.message);
+      setIsLoaded(true);
+    }
+  };
 
   useEffect(() => {
-    const stored = localStorage.getItem('vca_batches');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        // Basic schema validation: if it doesn't have an id or students isn't an array, it's old data
-        if (Array.isArray(parsed) && parsed.length > 0 && (!parsed[0].id || !Array.isArray(parsed[0].students))) {
-          console.warn('Old batch data detected, resetting to initial batches.');
-          setBatches(INITIAL_BATCHES);
-          localStorage.setItem('vca_batches', JSON.stringify(INITIAL_BATCHES));
-        } else {
-          setBatches(parsed);
-        }
-      } catch (e) {
-        setBatches(INITIAL_BATCHES);
-        localStorage.setItem('vca_batches', JSON.stringify(INITIAL_BATCHES));
-      }
-    } else {
-      setBatches(INITIAL_BATCHES);
-      localStorage.setItem('vca_batches', JSON.stringify(INITIAL_BATCHES));
-    }
-    setIsLoaded(true);
+    fetchBatches();
   }, []);
 
-  const saveBatches = (newBatches: Batch[]) => {
-    setBatches(newBatches);
+  const addBatch = async (batch: Omit<Batch, 'id' | 'students' | 'history' | 'status'>) => {
     try {
-      localStorage.setItem('vca_batches', JSON.stringify(newBatches));
-    } catch (error) {
-      console.error('Failed to save batches to localStorage:', error);
-      if (error instanceof Error && error.name === 'QuotaExceededError') {
-        alert('Local storage is full! Some changes might not persist after refreshing.');
-      }
+      const res = await fetch('/api/batches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(batch),
+      });
+      if (!res.ok) throw new Error('Failed to create batch');
+      const newBatch = await res.json();
+      setBatches(prev => [newBatch, ...prev]);
+      return newBatch.id;
+    } catch (err: any) {
+      alert(err.message);
+      return null;
     }
   };
 
-  const addBatch = (batch: Omit<Batch, 'id' | 'students' | 'history' | 'status'>) => {
-    const newBatch: Batch = {
-      ...batch,
-      id: `b${Date.now()}`,
-      students: [],
-      history: [],
-      status: 'active'
-    };
-    saveBatches([...batches, newBatch]);
-    return newBatch.id;
+  const updateBatch = async (id: string, updates: Partial<Batch>) => {
+    try {
+      const res = await fetch(`/api/batches/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) throw new Error('Failed to update batch');
+      setBatches(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
-  const updateBatch = (id: string, updates: Partial<Batch>) => {
-    saveBatches(batches.map(b => b.id === id ? { ...b, ...updates } : b));
+  const deleteBatch = async (id: string) => {
+    try {
+      const res = await fetch(`/api/batches/${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete batch');
+      setBatches(prev => prev.filter(b => b.id !== id));
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
-  const deleteBatch = (id: string) => {
-    saveBatches(batches.filter(b => b.id !== id));
+  const enrollStudent = async (batchId: string, studentId: string) => {
+    try {
+      const res = await fetch(`/api/batches/${batchId}/enroll`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId }),
+      });
+      if (!res.ok) throw new Error('Failed to enroll student');
+      setBatches(prev => prev.map(b => {
+        if (b.id === batchId && !b.students.includes(studentId)) {
+          return { ...b, students: [...b.students, studentId] };
+        }
+        return b;
+      }));
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
-  const enrollStudent = (batchId: string, studentId: string) => {
-    saveBatches(batches.map(b => {
-      if (b.id === batchId && !b.students.includes(studentId)) {
-        return { ...b, students: [...b.students, studentId] };
-      }
-      return b;
-    }));
+  const unenrollStudent = async (batchId: string, studentId: string) => {
+    try {
+      const res = await fetch(`/api/batches/${batchId}/enroll`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId }),
+      });
+      if (!res.ok) throw new Error('Failed to unenroll student');
+      setBatches(prev => prev.map(b => {
+        if (b.id === batchId) {
+          return { ...b, students: b.students.filter(id => id !== studentId) };
+        }
+        return b;
+      }));
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
-  const unenrollStudent = (batchId: string, studentId: string) => {
-    saveBatches(batches.map(b => {
-      if (b.id === batchId) {
-        return { ...b, students: b.students.filter(id => id !== studentId) };
-      }
-      return b;
-    }));
-  };
-
-  const addHistoryRecord = (batchId: string, record: Omit<BatchHistoryRecord, 'id'>) => {
-    saveBatches(batches.map(b => {
-      if (b.id === batchId) {
-        const newRecord = { ...record, id: `h${Date.now()}` };
-        return { ...b, history: [newRecord, ...(b.history || [])] };
-      }
-      return b;
-    }));
+  const addHistoryRecord = async (batchId: string, record: Omit<BatchHistoryRecord, 'id'>) => {
+    // History logic will be part of the Attendance API implementation
+    console.warn('addHistoryRecord not yet fully implemented with API');
   };
 
   return {
     batches,
     isLoaded,
+    error,
     addBatch,
     updateBatch,
     deleteBatch,
     enrollStudent,
     unenrollStudent,
-    addHistoryRecord
+    addHistoryRecord,
+    refresh: fetchBatches
   };
 }
 

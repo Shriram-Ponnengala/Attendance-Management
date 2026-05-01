@@ -10,9 +10,10 @@ export interface Topic {
 }
 
 export interface Program {
-  id: number;
+  id: string;
   name: string;
   code: string;
+  order: number;
   topics: Topic[];
 }
 
@@ -51,80 +52,124 @@ const INITIAL_PROGRAMS: Program[] = [
 export function usePrograms() {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchPrograms = async () => {
+    try {
+      const res = await fetch('/api/programs');
+      if (!res.ok) throw new Error('Failed to fetch programs');
+      const data = await res.json();
+      setPrograms(data);
+      setIsLoaded(true);
+    } catch (err: any) {
+      setError(err.message);
+      setIsLoaded(true);
+    }
+  };
 
   useEffect(() => {
-    const stored = localStorage.getItem('vca_programs');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setPrograms(parsed.sort((a: any, b: any) => a.order - b.order));
-      } catch (e) {
-        setPrograms(INITIAL_PROGRAMS);
-      }
-    } else {
-      setPrograms(INITIAL_PROGRAMS);
-      localStorage.setItem('vca_programs', JSON.stringify(INITIAL_PROGRAMS));
-    }
-    setIsLoaded(true);
+    fetchPrograms();
   }, []);
 
-  const savePrograms = (newPrograms: Program[]) => {
-    const sorted = [...newPrograms].sort((a, b) => a.order - b.order);
-    setPrograms(sorted);
-    localStorage.setItem('vca_programs', JSON.stringify(sorted));
+  const addProgram = async (name: string, code: string) => {
+    try {
+      const res = await fetch('/api/programs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, code, order: programs.length }),
+      });
+      if (!res.ok) throw new Error('Failed to add program');
+      const newProgram = await res.json();
+      setPrograms(prev => [...prev, newProgram]);
+      return newProgram.id;
+    } catch (err: any) {
+      alert(err.message);
+      return null;
+    }
   };
 
-  const addProgram = (name: string, code: string) => {
-    const newId = programs.length > 0 ? Math.max(...programs.map(p => p.id)) + 1 : 1;
-    const newOrder = programs.length > 0 ? Math.max(...programs.map(p => p.order)) + 1 : 1;
-    const newProgram: Program = {
-      id: newId,
-      name,
-      code,
-      order: newOrder,
-      topics: []
-    };
-    savePrograms([...programs, newProgram]);
-    return newId;
+  const updateProgram = async (id: string, updates: Partial<Program>) => {
+    try {
+      const res = await fetch(`/api/programs/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) throw new Error('Failed to update program');
+      setPrograms(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
-  const updateProgram = (id: number, updates: Partial<Program>) => {
-    savePrograms(programs.map(p => p.id === id ? { ...p, ...updates } : p));
+  const deleteProgram = async (id: string) => {
+    try {
+      const res = await fetch(`/api/programs/${id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('Failed to delete program');
+      setPrograms(prev => prev.filter(p => p.id !== id));
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
-  const deleteProgram = (id: number) => {
-    savePrograms(programs.filter(p => p.id !== id));
-  };
-
-  const moveProgram = (id: number, direction: 'up' | 'down') => {
+  const moveProgram = async (id: string, direction: 'up' | 'down') => {
     const index = programs.findIndex(p => p.id === id);
     if (index === -1) return;
     if (direction === 'up' && index === 0) return;
     if (direction === 'down' && index === programs.length - 1) return;
 
-    const newPrograms = [...programs];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    
-    // Swap orders
-    const tempOrder = newPrograms[index].order;
-    newPrograms[index].order = newPrograms[targetIndex].order;
-    newPrograms[targetIndex].order = tempOrder;
+    const current = programs[index];
+    const target = programs[targetIndex];
 
-    savePrograms(newPrograms);
+    try {
+      // Simple swap order in backend
+      const res = await fetch('/api/programs/reorder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          program1: { id: current.id, order: target.order },
+          program2: { id: target.id, order: current.order }
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to reorder programs');
+      
+      const newPrograms = [...programs];
+      const tempOrder = newPrograms[index].order;
+      newPrograms[index].order = newPrograms[targetIndex].order;
+      newPrograms[targetIndex].order = tempOrder;
+      setPrograms(newPrograms.sort((a, b) => a.order - b.order));
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
-  const updateTopics = (programId: number, topics: Topic[]) => {
-    savePrograms(programs.map(p => p.id === programId ? { ...p, topics } : p));
+  const updateTopics = async (programId: string, topics: Topic[]) => {
+    try {
+      const res = await fetch(`/api/programs/${programId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topics }),
+      });
+      if (!res.ok) throw new Error('Failed to update topics');
+      setPrograms(prev => prev.map(p => p.id === programId ? { ...p, topics } : p));
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
   return {
     programs,
     isLoaded,
+    error,
     addProgram,
     updateProgram,
     deleteProgram,
     moveProgram,
-    updateTopics
+    updateTopics,
+    refresh: fetchPrograms
   };
 }
 

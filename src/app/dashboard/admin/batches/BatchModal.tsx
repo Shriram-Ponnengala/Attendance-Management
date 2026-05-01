@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X } from 'lucide-react';
-import { PROGRAM_OPTIONS, MOCK_COACHES, Batch } from '@/lib/hooks/useBatches';
+import { Batch } from '@/lib/hooks/useBatches';
+import { useUsers } from '@/lib/hooks/useUsers';
+import { usePrograms } from '@/lib/hooks/usePrograms';
 import styles from './BatchModal.module.css';
 
 interface BatchModalProps {
@@ -15,10 +17,14 @@ interface BatchModalProps {
 const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
 export function BatchModal({ isOpen, onClose, onSave, initialData }: BatchModalProps) {
+  const { users, isLoaded: usersLoaded } = useUsers();
+  const { programs, isLoaded: programsLoaded } = usePrograms();
+  const coaches = useMemo(() => users.filter(u => u.role === 'COACH'), [users]);
+
   const [formData, setFormData] = useState({
     name: '',
-    program: PROGRAM_OPTIONS[0],
-    coach: MOCK_COACHES[0],
+    program: '',
+    coachId: '',
     type: 'Group' as 'Group' | 'One-on-One',
     startDate: '',
     days: [] as string[],
@@ -34,7 +40,7 @@ export function BatchModal({ isOpen, onClose, onSave, initialData }: BatchModalP
         setFormData({
           name: initialData.name,
           program: initialData.program,
-          coach: initialData.coach,
+          coachId: initialData.coachId || '',
           type: initialData.type,
           startDate: initialData.startDate,
           days: initialData.days,
@@ -44,8 +50,8 @@ export function BatchModal({ isOpen, onClose, onSave, initialData }: BatchModalP
       } else {
         setFormData({
           name: '',
-          program: PROGRAM_OPTIONS[0],
-          coach: MOCK_COACHES[0],
+          program: '',
+          coachId: '',
           type: 'Group',
           startDate: '',
           days: [],
@@ -58,7 +64,18 @@ export function BatchModal({ isOpen, onClose, onSave, initialData }: BatchModalP
       document.body.style.overflow = 'unset';
     }
     return () => { document.body.style.overflow = 'unset'; };
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData]); // Removed programs/coaches from here to avoid loops during data loading
+
+  // Separate effect to set default program/coach once data is loaded for NEW batches
+  useEffect(() => {
+    if (isOpen && !initialData && programs.length > 0 && coaches.length > 0 && !formData.program) {
+      setFormData(prev => ({
+        ...prev,
+        program: prev.program || programs[0].name,
+        coachId: prev.coachId || coaches[0].id
+      }));
+    }
+  }, [isOpen, initialData, programs, coaches, formData.program]);
 
   if (!isOpen) return null;
 
@@ -130,13 +147,14 @@ export function BatchModal({ isOpen, onClose, onSave, initialData }: BatchModalP
             <div className={styles.fieldGroup}>
               <label className={styles.label}>PROGRAM *</label>
               <select name="program" value={formData.program} onChange={handleChange} className={styles.select}>
-                {PROGRAM_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                {programs.map(opt => <option key={opt.id} value={opt.name}>{opt.name}</option>)}
               </select>
             </div>
             <div className={styles.fieldGroup}>
               <label className={styles.label}>COACH *</label>
-              <select name="coach" value={formData.coach} onChange={handleChange} className={styles.select}>
-                {MOCK_COACHES.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              <select name="coachId" value={formData.coachId} onChange={handleChange} className={styles.select}>
+                {coaches.map(opt => <option key={opt.id} value={opt.id}>{opt.username}</option>)}
+                {coaches.length === 0 && <option value="">No coaches found</option>}
               </select>
             </div>
           </div>

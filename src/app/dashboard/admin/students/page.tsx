@@ -27,8 +27,8 @@ export default function StudentsPage() {
   const programs = ['All', 'Pawn Batch', 'Knight Batch', 'Bishop Batch', 'Rook Batch', 'Queen Batch', 'King Batch'];
 
   const filteredStudents = students.filter(student => {
-    const matchesSearch = student.name.toLowerCase().includes(search.toLowerCase()) || 
-                          student.email.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = (student.name?.toLowerCase().includes(search.toLowerCase()) || 
+                          student.email?.toLowerCase().includes(search.toLowerCase())) ?? false;
     const matchesStatus = statusFilter === 'all' || student.status === statusFilter;
     const matchesProgram = programFilter === 'All' || student.program === programFilter;
     

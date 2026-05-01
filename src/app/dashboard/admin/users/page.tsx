@@ -53,13 +53,15 @@ export default function UsersPage() {
     if (editingUser) {
       updateUser(editingUser.id, { 
         username: formData.username, 
-        role: formData.role as any 
+        role: formData.role as any,
+        password: formData.password || undefined
       });
       alert('User updated successfully!');
     } else {
       addUser({ 
         username: formData.username, 
-        role: formData.role as any 
+        role: formData.role as any,
+        password: formData.password
       });
       alert('User created successfully!');
     }

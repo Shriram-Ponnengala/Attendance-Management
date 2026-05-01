@@ -33,6 +33,20 @@ export function Sidebar({ role, username }: SidebarProps) {
     { name: 'Settings', href: '/dashboard/admin/settings', icon: Settings },
   ];
 
+  const coachLinks = [
+    { name: 'Dashboard', href: '/dashboard/coach', icon: LayoutDashboard },
+    { name: 'Attendance', href: '/dashboard/coach/attendance', icon: Users },
+    { name: 'Materials', href: '/dashboard/coach/materials', icon: BookOpen },
+  ];
+
+  const studentLinks = [
+    { name: 'Dashboard', href: '/dashboard/student', icon: LayoutDashboard },
+    { name: 'Attendance', href: '/dashboard/student/attendance', icon: Users },
+    { name: 'Materials', href: '/dashboard/student/materials', icon: BookOpen },
+  ];
+
+  const links = role === 'ADMIN' ? adminLinks : role === 'COACH' ? coachLinks : studentLinks;
+
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
@@ -62,11 +76,9 @@ export function Sidebar({ role, username }: SidebarProps) {
       </div>
 
       <nav className={styles.nav}>
-        {adminLinks.map((link) => {
+        {links.map((link) => {
           const Icon = link.icon;
-          const isActive = link.href === '/dashboard/admin' 
-            ? pathname === '/dashboard/admin' 
-            : pathname.startsWith(link.href);
+          const isActive = pathname === link.href || pathname.startsWith(link.href + '/');
           return (
             <Link 
               key={link.name} 
