@@ -1,5 +1,5 @@
 import { Chess } from "chess.js";
-import type { MoveNode, Participant, ChessRoomState } from "./types";
+import type { MoveNode, Participant, ChessRoomState, ArrowData, ChatMessage } from "./types";
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -26,7 +26,8 @@ function createInitialNodes(): Record<string, MoveNode> {
       parentId: null,
       children: [],
       moveNumber: 0,
-      turn: 'b' // Next move will be white
+      turn: 'b', // Next move will be white
+      arrows: []
     }
   };
 }
@@ -37,7 +38,9 @@ export function getRoom(roomId: string): ServerChessRoom {
       nodes: createInitialNodes(),
       currentNodeId: 'root',
       participantsMap: new Map(),
-      participants: []
+      participants: [],
+      isLocked: false,
+      chatHistory: []
     });
   }
   return rooms.get(roomId)!;
@@ -48,7 +51,9 @@ export function getRoomState(roomId: string): ChessRoomState {
   return {
     nodes: room.nodes,
     currentNodeId: room.currentNodeId,
-    participants: Array.from(room.participantsMap.values())
+    participants: Array.from(room.participantsMap.values()),
+    isLocked: room.isLocked || false,
+    chatHistory: room.chatHistory || []
   };
 }
 
@@ -61,7 +66,8 @@ export function applyMove(
 ): { node: MoveNode; currentNodeId: string } | null {
   const room = getRoom(roomId);
   
-  // Ensure the parent node exists
+  if (room.isLocked) return null; // Prevent moves if locked
+
   const parentNode = room.nodes[parentId];
   if (!parentNode) return null;
 
@@ -70,16 +76,13 @@ export function applyMove(
     const result = game.move({ from, to, promotion });
     if (!result) return null;
 
-    // Check if this exact move already exists as a child to avoid duplicates
     const existingChildId = parentNode.children.find(childId => {
-      const child = room.nodes[childId];
-      return child.san === result.san;
+      return room.nodes[childId].san === result.san;
     });
 
     let newCurrentNodeId = existingChildId;
 
     if (!newCurrentNodeId) {
-      // Create new node
       const nodeId = `node_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
       const newMoveNumber = parentNode.turn === 'b' ? parentNode.moveNumber + 1 : parentNode.moveNumber;
       
@@ -93,6 +96,7 @@ export function applyMove(
         children: [],
         moveNumber: newMoveNumber,
         turn: result.color as 'w' | 'b',
+        arrows: []
       };
 
       room.nodes[nodeId] = newNode;
@@ -111,19 +115,55 @@ export function applyMove(
   }
 }
 
-export function navigateNode(roomId: string, nodeId: string): boolean {
+export function navigateNode(roomId: string, nodeId: string): { success: boolean; isLocked: boolean } {
   const room = getRoom(roomId);
   if (room.nodes[nodeId]) {
     room.currentNodeId = nodeId;
-    return true;
+    // Auto-unlock on navigation per requirements
+    room.isLocked = false;
+    return { success: true, isLocked: false };
   }
-  return false;
+  return { success: false, isLocked: room.isLocked };
 }
 
 export function resetRoom(roomId: string): void {
   const room = getRoom(roomId);
   room.nodes = createInitialNodes();
   room.currentNodeId = 'root';
+  room.isLocked = false;
+}
+
+// ─── New Features Management ───
+export function updateArrows(roomId: string, nodeId: string, arrows: ArrowData[]): boolean {
+  const room = getRoom(roomId);
+  if (room.nodes[nodeId]) {
+    room.nodes[nodeId].arrows = arrows;
+    return true;
+  }
+  return false;
+}
+
+export function toggleLock(roomId: string, isLocked: boolean): void {
+  const room = getRoom(roomId);
+  room.isLocked = isLocked;
+}
+
+export function addChatMessage(roomId: string, userId: string, username: string, message: string): ChatMessage {
+  const room = getRoom(roomId);
+  const msg: ChatMessage = {
+    id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+    userId,
+    username,
+    message,
+    timestamp: Date.now()
+  };
+  room.chatHistory.push(msg);
+  
+  // Keep history limited to 100 messages to prevent memory leaks
+  if (room.chatHistory.length > 100) {
+    room.chatHistory.shift();
+  }
+  return msg;
 }
 
 // ─── Participants management ───

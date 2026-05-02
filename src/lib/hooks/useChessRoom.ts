@@ -18,7 +18,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import type { ClientToServerEvents, ServerToClientEvents, MoveNode, Participant } from '../socket/types';
+import type { ClientToServerEvents, ServerToClientEvents, MoveNode, Participant, ArrowData, ChatMessage } from '../socket/types';
 
 type ChessSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -28,20 +28,28 @@ export interface UseChessRoomReturn {
   participants: Participant[];
   isConnected: boolean;
   isReady: boolean;
+  isLocked: boolean;
+  chatHistory: ChatMessage[];
   makeMove: (from: string, to: string, promotion?: string, parentId?: string) => void;
   navigate: (nodeId: string) => void;
   resetBoard: () => void;
+  updateArrows: (arrows: ArrowData[]) => void;
+  clearArrows: () => void;
+  toggleLock: (locked: boolean) => void;
+  sendChatMessage: (message: string) => void;
 }
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const initialNodes: Record<string, MoveNode> = {
-  root: { id: 'root', fen: START_FEN, san: '', parentId: null, children: [], moveNumber: 0, turn: 'b' }
+  root: { id: 'root', fen: START_FEN, san: '', parentId: null, children: [], moveNumber: 0, turn: 'b', arrows: [] }
 };
 
 export function useChessRoom(roomId: string): UseChessRoomReturn {
   const [nodes, setNodes] = useState<Record<string, MoveNode>>(initialNodes);
   const [currentNodeId, setCurrentNodeId] = useState<string>('root');
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [isLocked, setIsLocked] = useState(false);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isReady, setIsReady] = useState(false);
 
@@ -119,6 +127,8 @@ export function useChessRoom(roomId: string): UseChessRoomReturn {
           setNodes(state.nodes);
           setCurrentNodeId(state.currentNodeId);
           setParticipants(state.participants);
+          setIsLocked(state.isLocked);
+          setChatHistory(state.chatHistory);
           setIsReady(true);
         });
 
@@ -126,7 +136,6 @@ export function useChessRoom(roomId: string): UseChessRoomReturn {
           console.log('[ChessRoom] Move made:', node.san);
           setNodes(prev => {
             const next = { ...prev };
-            // Ensure parent has this child
             if (node.parentId && next[node.parentId]) {
               const parent = next[node.parentId];
               if (!parent.children.includes(node.id)) {
@@ -139,8 +148,9 @@ export function useChessRoom(roomId: string): UseChessRoomReturn {
           setCurrentNodeId(currentNodeId);
         });
 
-        socket.on('chess:navigated', ({ currentNodeId }) => {
+        socket.on('chess:navigated', ({ currentNodeId, isLocked }) => {
           setCurrentNodeId(currentNodeId);
+          if (isLocked !== undefined) setIsLocked(isLocked);
         });
 
         socket.on('chess:participants_update', (updatedParticipants) => {
@@ -149,6 +159,28 @@ export function useChessRoom(roomId: string): UseChessRoomReturn {
 
         socket.on('chess:move_rejected', ({ reason }) => {
           console.warn('[ChessRoom] Move rejected:', reason);
+        });
+        
+        socket.on('chess:arrows_updated', ({ nodeId, arrows }) => {
+          setNodes(prev => {
+            if (!prev[nodeId]) return prev;
+            return {
+              ...prev,
+              [nodeId]: { ...prev[nodeId], arrows }
+            };
+          });
+        });
+
+        socket.on('chess:lock_toggled', ({ isLocked }) => {
+          setIsLocked(isLocked);
+        });
+
+        socket.on('chess:chat_message', (msg) => {
+          setChatHistory(prev => {
+            const newHistory = [...prev, msg];
+            if (newHistory.length > 100) newHistory.shift();
+            return newHistory;
+          });
         });
 
         socket.on('error', (msg) => {
@@ -192,5 +224,38 @@ export function useChessRoom(roomId: string): UseChessRoomReturn {
     socketRef.current?.emit('chess:reset', roomIdRef.current);
   }, []);
 
-  return { nodes, currentNodeId, participants, isConnected, isReady, makeMove, navigate, resetBoard };
+  const updateArrows = useCallback((arrows: ArrowData[]) => {
+    socketRef.current?.emit('chess:update_arrows', {
+      roomId: roomIdRef.current,
+      nodeId: currentNodeIdRef.current,
+      arrows
+    });
+  }, []);
+
+  const clearArrows = useCallback(() => {
+    socketRef.current?.emit('chess:update_arrows', {
+      roomId: roomIdRef.current,
+      nodeId: currentNodeIdRef.current,
+      arrows: []
+    });
+  }, []);
+
+  const toggleLock = useCallback((locked: boolean) => {
+    socketRef.current?.emit('chess:toggle_lock', {
+      roomId: roomIdRef.current,
+      isLocked: locked
+    });
+  }, []);
+
+  const sendChatMessage = useCallback((message: string) => {
+    socketRef.current?.emit('chess:send_chat', {
+      roomId: roomIdRef.current,
+      message
+    });
+  }, []);
+
+  return { 
+    nodes, currentNodeId, participants, isConnected, isReady, isLocked, chatHistory, 
+    makeMove, navigate, resetBoard, updateArrows, clearArrows, toggleLock, sendChatMessage 
+  };
 }

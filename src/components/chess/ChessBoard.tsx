@@ -7,6 +7,7 @@ import type { Api } from 'chessground/api';
 import type { Config } from 'chessground/config';
 import type { Key } from 'chessground/types';
 import { ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react';
+import type { ArrowData } from '@/lib/socket/types';
 
 import 'chessground/assets/chessground.base.css';
 import 'chessground/assets/chessground.brown.css';
@@ -25,12 +26,16 @@ interface ChessBoardProps {
   onEnd: () => void;
   onVariationUp?: () => void;
   onVariationDown?: () => void;
+  arrows?: ArrowData[];
+  onUpdateArrows?: (arrows: ArrowData[]) => void;
+  isLocked?: boolean;
 }
 
 const ChessBoard: React.FC<ChessBoardProps> = ({
   fen, history, currentIndex, onMove,
   canNext, canPrev, onNext, onPrev, onStart, onEnd,
-  onVariationUp, onVariationDown
+  onVariationUp, onVariationDown,
+  arrows = [], onUpdateArrows, isLocked = false
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const cgRef = useRef<Api | null>(null);
@@ -42,6 +47,8 @@ const ChessBoard: React.FC<ChessBoardProps> = ({
   const onPrevRef = useRef(onPrev);
   const onVariationUpRef = useRef(onVariationUp);
   const onVariationDownRef = useRef(onVariationDown);
+  const onUpdateArrowsRef = useRef(onUpdateArrows);
+  const isLockedRef = useRef(isLocked);
 
   useEffect(() => {
     currentIndexRef.current = currentIndex;
@@ -50,10 +57,14 @@ const ChessBoard: React.FC<ChessBoardProps> = ({
     onPrevRef.current = onPrev;
     onVariationUpRef.current = onVariationUp;
     onVariationDownRef.current = onVariationDown;
-  }, [currentIndex, history, onNext, onPrev, onVariationUp, onVariationDown]);
+    onUpdateArrowsRef.current = onUpdateArrows;
+    isLockedRef.current = isLocked;
+  }, [currentIndex, history, onNext, onPrev, onVariationUp, onVariationDown, onUpdateArrows, isLocked]);
 
   const toDests = (chess: Chess) => {
     const dests = new Map();
+    if (isLockedRef.current) return dests; // No moves allowed if locked
+    
     const squares = [
       'a8', 'b8', 'c8', 'd8', 'e8', 'f8', 'g8', 'h8',
       'a7', 'b7', 'c7', 'd7', 'e7', 'f7', 'g7', 'h7',
@@ -79,6 +90,18 @@ const ChessBoard: React.FC<ChessBoardProps> = ({
     }
   };
 
+  const handleDraw = (shapes: any[]) => {
+    if (onUpdateArrowsRef.current) {
+      // Extract necessary data from shapes (DrawShape)
+      const mappedArrows: ArrowData[] = shapes.map(s => ({
+        orig: s.orig,
+        dest: s.dest,
+        brush: s.brush
+      }));
+      onUpdateArrowsRef.current(mappedArrows);
+    }
+  };
+
   useEffect(() => {
     if (containerRef.current && !cgRef.current) {
       const chess = new Chess(fen);
@@ -93,6 +116,13 @@ const ChessBoard: React.FC<ChessBoardProps> = ({
           events: {
             after: handleMove,
           },
+        },
+        drawable: {
+          enabled: true,
+          visible: true,
+          eraseOnClick: true,
+          onChange: handleDraw,
+          autoShapes: arrows,
         },
         animation: {
           enabled: true,
@@ -145,9 +175,12 @@ const ChessBoard: React.FC<ChessBoardProps> = ({
             after: handleMove,
           }
         },
+        drawable: {
+          autoShapes: arrows,
+        }
       });
     }
-  }, [fen, currentIndex]);
+  }, [fen, currentIndex, isLocked, arrows]);
 
   return (
     <div className="chess-container">

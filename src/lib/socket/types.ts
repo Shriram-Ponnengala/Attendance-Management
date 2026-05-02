@@ -1,5 +1,19 @@
 // ─── Shared chess types ───────────────────────────────────────────────────────
 
+export interface ArrowData {
+  orig: string;
+  dest?: string;
+  brush?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  userId: string;
+  username: string;
+  message: string;
+  timestamp: number;
+}
+
 export interface MoveNode {
   id: string;
   fen: string;
@@ -8,9 +22,9 @@ export interface MoveNode {
   children: string[];
   moveNumber: number;
   turn: 'w' | 'b';
-  // Optional move info for reference
   from?: string;
   to?: string;
+  arrows: ArrowData[];
 }
 
 export interface Participant {
@@ -22,6 +36,8 @@ export interface ChessRoomState {
   nodes: Record<string, MoveNode>;
   currentNodeId: string;
   participants: Participant[];
+  isLocked: boolean;
+  chatHistory: ChatMessage[];
 }
 
 export interface ServerToClientEvents {
@@ -34,9 +50,14 @@ export interface ServerToClientEvents {
   // ─── Chess events ──────────────────────────────────────────────────────────
   "chess:state": (data: ChessRoomState) => void;
   "chess:move_made": (data: { node: MoveNode; currentNodeId: string }) => void;
-  "chess:navigated": (data: { currentNodeId: string }) => void;
+  "chess:navigated": (data: { currentNodeId: string; isLocked?: boolean }) => void;
   "chess:move_rejected": (data: { reason: string }) => void;
   "chess:participants_update": (participants: Participant[]) => void;
+  
+  // New events
+  "chess:arrows_updated": (data: { nodeId: string; arrows: ArrowData[] }) => void;
+  "chess:lock_toggled": (data: { isLocked: boolean }) => void;
+  "chess:chat_message": (data: ChatMessage) => void;
 }
 
 export interface ClientToServerEvents {
@@ -50,6 +71,11 @@ export interface ClientToServerEvents {
   "chess:make_move": (data: { roomId: string; from: string; to: string; promotion?: string; parentId: string }) => void;
   "chess:navigate": (data: { roomId: string; nodeId: string }) => void;
   "chess:reset": (roomId: string) => void;
+
+  // New events
+  "chess:update_arrows": (data: { roomId: string; nodeId: string; arrows: ArrowData[] }) => void;
+  "chess:toggle_lock": (data: { roomId: string; isLocked: boolean }) => void;
+  "chess:send_chat": (data: { roomId: string; message: string }) => void;
 }
 
 export interface InterServerEvents {}

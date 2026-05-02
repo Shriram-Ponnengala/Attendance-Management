@@ -12,6 +12,9 @@ import {
   resetRoom,
   addParticipant,
   removeParticipant,
+  updateArrows,
+  toggleLock,
+  addChatMessage
 } from "./chessRooms";
 
 type IO = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -73,16 +76,20 @@ export function handleSocketConnection(io: IO) {
         console.log(`[Chess] Move ${result.node.san} ACCEPTED in room ${roomId}`);
         io.to(roomId).emit("chess:move_made", result);
       } else {
-        console.log(`[Chess] Move ${from}-${to} REJECTED in room ${roomId} (Illegal)`);
+        console.log(`[Chess] Move ${from}-${to} REJECTED in room ${roomId} (Illegal or Locked)`);
         socket.emit("chess:move_rejected", {
-          reason: `Illegal move: ${from} → ${to}`,
+          reason: `Illegal move or board is locked`,
         });
       }
     });
 
     socket.on("chess:navigate", ({ roomId, nodeId }) => {
-      if (navigateNode(roomId, nodeId)) {
-        io.to(roomId).emit("chess:navigated", { currentNodeId: nodeId });
+      const result = navigateNode(roomId, nodeId);
+      if (result.success) {
+        io.to(roomId).emit("chess:navigated", { 
+          currentNodeId: nodeId,
+          isLocked: result.isLocked 
+        });
       }
     });
 
@@ -90,6 +97,30 @@ export function handleSocketConnection(io: IO) {
       resetRoom(roomId);
       console.log(`[Chess] Room ${roomId} reset by ${socket.id}`);
       io.to(roomId).emit("chess:state", getRoomState(roomId));
+    });
+
+    // ── New Feature Events ───────────────────────────────────────────────────
+
+    socket.on("chess:update_arrows", ({ roomId, nodeId, arrows }) => {
+      if (updateArrows(roomId, nodeId, arrows)) {
+        // Broadcast arrows so other clients can draw them instantly
+        io.to(roomId).emit("chess:arrows_updated", { nodeId, arrows });
+      }
+    });
+
+    socket.on("chess:toggle_lock", ({ roomId, isLocked }) => {
+      toggleLock(roomId, isLocked);
+      io.to(roomId).emit("chess:lock_toggled", { isLocked });
+    });
+
+    socket.on("chess:send_chat", ({ roomId, message }) => {
+      // Create a nice username or look it up from participantsMap
+      const state = getRoomState(roomId);
+      const participant = state.participants.find(p => p.id === socket.id);
+      const username = participant ? participant.name : `Admin (${socket.id.substring(0,4)})`;
+      
+      const chatMsg = addChatMessage(roomId, socket.id, username, message);
+      io.to(roomId).emit("chess:chat_message", chatMsg);
     });
 
     // ── Disconnect ───────────────────────────────────────────────────────────

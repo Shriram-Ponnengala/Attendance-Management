@@ -1,19 +1,42 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import ChessBoard from '@/components/chess/ChessBoard';
-import { History, Zap, RotateCcw, Wifi, WifiOff, Users, User } from 'lucide-react';
+import { History, Zap, RotateCcw, Wifi, WifiOff, Users, User, Lock, Unlock, MessageSquare, Send, Eraser } from 'lucide-react';
 import { useChessRoom } from '@/lib/hooks/useChessRoom';
-import { MoveNode } from '@/lib/socket/types';
+import { MoveNode, ChatMessage } from '@/lib/socket/types';
 
 const ROOM_ID = 'test-room';
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
 export default function ChessTestPage() {
-  const { nodes, currentNodeId, participants, isConnected, isReady, makeMove, navigate, resetBoard } = useChessRoom(ROOM_ID);
+  const { 
+    nodes, currentNodeId, participants, isConnected, isReady, isLocked, chatHistory,
+    makeMove, navigate, resetBoard, updateArrows, clearArrows, toggleLock, sendChatMessage
+  } = useChessRoom(ROOM_ID);
 
-  const [activeTab, setActiveTab] = useState<'history' | 'participants'>('history');
+  const [activeTab, setActiveTab] = useState<'history' | 'participants' | 'chat'>('history');
   const [selectedVariationIndex, setSelectedVariationIndex] = useState(0);
+  const [chatInput, setChatInput] = useState('');
+  const chatMessagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    chatMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    if (activeTab === 'chat') {
+      scrollToBottom();
+    }
+  }, [chatHistory, activeTab]);
+
+  const handleSendChat = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (chatInput.trim()) {
+      sendChatMessage(chatInput.trim());
+      setChatInput('');
+    }
+  };
 
   // ── Navigation helpers ────────────────────────────────────────────────────
   const getPathToRoot = (nodeId: string, tree: Record<string, MoveNode>): string[] => {
@@ -228,6 +251,25 @@ export default function ChessTestPage() {
               <Users size={14} />
               <span>Room: {ROOM_ID}</span>
             </div>
+            
+            <button
+              className={`header-btn ${isLocked ? 'locked' : 'unlocked'}`}
+              onClick={() => toggleLock(!isLocked)}
+              title={isLocked ? "Unlock Moves" : "Lock Moves (Analysis Mode)"}
+            >
+              {isLocked ? <Lock size={14} /> : <Unlock size={14} />}
+              {isLocked ? 'Unlock' : 'Lock'}
+            </button>
+            
+            <button
+              className="header-btn"
+              onClick={() => clearArrows()}
+              title="Clear Arrows on current move"
+            >
+              <Eraser size={14} />
+              Clear Arrows
+            </button>
+
             <button
               className="reset-btn"
               onClick={() => { if (confirm('Reset the board for everyone?')) resetBoard(); }}
@@ -256,6 +298,9 @@ export default function ChessTestPage() {
               onEnd={handleEnd}
               onVariationUp={handleVariationUp}
               onVariationDown={handleVariationDown}
+              arrows={currentNode?.arrows || []}
+              onUpdateArrows={updateArrows}
+              isLocked={isLocked}
             />
           </section>
 
@@ -271,7 +316,13 @@ export default function ChessTestPage() {
                 className={`tab-btn ${activeTab === 'participants' ? 'active' : ''}`}
                 onClick={() => setActiveTab('participants')}
               >
-                <Users size={16} /> Participants ({participants.length})
+                <Users size={16} /> Participants
+              </button>
+              <button 
+                className={`tab-btn ${activeTab === 'chat' ? 'active' : ''}`}
+                onClick={() => setActiveTab('chat')}
+              >
+                <MessageSquare size={16} /> Chat
               </button>
             </div>
 
@@ -285,8 +336,11 @@ export default function ChessTestPage() {
                     }
                   </div>
                 </div>
-              ) : (
+              ) : activeTab === 'participants' ? (
                 <div className="participants-content">
+                  <div className="panel-header">
+                    <h2>Connected Users ({participants.length})</h2>
+                  </div>
                   {participants.length === 0 ? (
                     <p className="empty-state">No participants connected.</p>
                   ) : (
@@ -302,6 +356,39 @@ export default function ChessTestPage() {
                       ))}
                     </div>
                   )}
+                </div>
+              ) : (
+                <div className="chat-content">
+                  <div className="chat-messages">
+                    {(chatHistory || []).length === 0 ? (
+                      <p className="empty-state">No messages yet. Say hi!</p>
+                    ) : (
+                      (chatHistory || []).map((msg: ChatMessage) => (
+                        <div key={msg.id} className="chat-message">
+                          <div className="chat-msg-header">
+                            <span className="chat-msg-name">{msg.username}</span>
+                            <span className="chat-msg-time">
+                              {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div className="chat-msg-text">{msg.message}</div>
+                        </div>
+                      ))
+                    )}
+                    <div ref={chatMessagesEndRef} />
+                  </div>
+                  <form className="chat-input-form" onSubmit={handleSendChat}>
+                    <input
+                      type="text"
+                      placeholder="Type a message..."
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      className="chat-input"
+                    />
+                    <button type="submit" className="chat-send-btn" disabled={!chatInput.trim()}>
+                      <Send size={16} />
+                    </button>
+                  </form>
                 </div>
               )}
             </div>
@@ -368,6 +455,18 @@ export default function ChessTestPage() {
           border: 1px solid rgba(255,255,255,.08);
           padding: 4px 10px; border-radius: 8px;
         }
+        .header-btn {
+          display: flex; align-items: center; gap: 5px;
+          font-size: .78rem; font-weight: 600;
+          background: rgba(255,255,255,.05);
+          border: 1px solid rgba(255,255,255,.1);
+          color: #f8fafc; padding: 5px 12px; border-radius: 8px;
+          cursor: pointer; transition: all .15s;
+        }
+        .header-btn:hover { background: rgba(255,255,255,.1); }
+        .header-btn.locked { color: #fbbf24; border-color: rgba(251,191,36,.3); background: rgba(251,191,36,.1); }
+        .header-btn.unlocked { color: #4ade80; border-color: rgba(74,222,128,.3); background: rgba(74,222,128,.1); }
+
         .reset-btn {
           display: flex; align-items: center; gap: 5px;
           font-size: .78rem; font-weight: 600;
@@ -463,7 +562,7 @@ export default function ChessTestPage() {
           padding: 1.5rem;
         }
 
-        .history-content, .participants-content {
+        .history-content, .participants-content, .chat-content {
           display: flex;
           flex-direction: column;
           height: 100%;
@@ -525,6 +624,50 @@ export default function ChessTestPage() {
           background: #4ade80;
           box-shadow: 0 0 8px rgba(74,222,128,.4);
         }
+
+        /* ── Chat UI ── */
+        .chat-messages {
+          flex: 1; overflow-y: auto;
+          display: flex; flex-direction: column; gap: 12px;
+          padding-right: .5rem;
+        }
+        .chat-message {
+          display: flex; flex-direction: column; gap: 4px;
+        }
+        .chat-msg-header {
+          display: flex; justify-content: space-between; align-items: center;
+        }
+        .chat-msg-name {
+          font-size: .8rem; font-weight: 600; color: #a78bfa;
+        }
+        .chat-msg-time {
+          font-size: .7rem; color: rgba(255,255,255,.4);
+        }
+        .chat-msg-text {
+          font-size: .9rem; color: #f8fafc;
+          background: rgba(255,255,255,.05);
+          padding: 8px 12px; border-radius: 0 12px 12px 12px;
+          border: 1px solid rgba(255,255,255,.05);
+          line-height: 1.4;
+        }
+        .chat-input-form {
+          display: flex; gap: 8px; margin-top: 16px;
+        }
+        .chat-input {
+          flex: 1; background: rgba(0,0,0,.2);
+          border: 1px solid rgba(255,255,255,.1);
+          color: #fff; padding: 10px 14px;
+          border-radius: 8px; outline: none; font-family: inherit;
+        }
+        .chat-input:focus { border-color: rgba(139,92,246,.5); }
+        .chat-send-btn {
+          background: #8b5cf6; border: none; color: #fff;
+          padding: 0 14px; border-radius: 8px; cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          transition: background .2s;
+        }
+        .chat-send-btn:hover:not(:disabled) { background: #7c3aed; }
+        .chat-send-btn:disabled { opacity: .5; cursor: not-allowed; }
 
         /* ── Move tree ── */
         .main-row {
