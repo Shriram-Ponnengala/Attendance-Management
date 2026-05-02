@@ -43,6 +43,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({
   // Refs to avoid stale closures in the event listener
   const currentIndexRef = useRef(currentIndex);
   const historyRef = useRef(history);
+  const onMoveRef = useRef(onMove);
   const onNextRef = useRef(onNext);
   const onPrevRef = useRef(onPrev);
   const onVariationUpRef = useRef(onVariationUp);
@@ -53,13 +54,14 @@ const ChessBoard: React.FC<ChessBoardProps> = ({
   useEffect(() => {
     currentIndexRef.current = currentIndex;
     historyRef.current = history;
+    onMoveRef.current = onMove;
     onNextRef.current = onNext;
     onPrevRef.current = onPrev;
     onVariationUpRef.current = onVariationUp;
     onVariationDownRef.current = onVariationDown;
     onUpdateArrowsRef.current = onUpdateArrows;
     isLockedRef.current = isLocked;
-  }, [currentIndex, history, onNext, onPrev, onVariationUp, onVariationDown, onUpdateArrows, isLocked]);
+  }, [currentIndex, history, onMove, onNext, onPrev, onVariationUp, onVariationDown, onUpdateArrows, isLocked]);
 
   const toDests = (chess: Chess) => {
     const dests = new Map();
@@ -86,7 +88,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({
     const chess = new Chess(historyRef.current[currentIndexRef.current]);
     const move = chess.move({ from: orig, to: dest, promotion: 'q' });
     if (move) {
-      onMove(move, currentIndexRef.current, chess.fen());
+      onMoveRef.current(move, currentIndexRef.current, chess.fen());
     }
   };
 
