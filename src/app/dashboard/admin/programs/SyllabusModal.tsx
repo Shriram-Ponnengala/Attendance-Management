@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Pencil, Trash2, GripVertical, Book, CheckCircle2 } from 'lucide-react';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import styles from './SyllabusModal.module.css';
 
 interface Topic {
@@ -31,6 +32,8 @@ export function SyllabusModal({ isOpen, onClose, program, onSaveTopics, userRole
   const [formTitle, setFormTitle] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [topicToDelete, setTopicToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -69,12 +72,18 @@ export function SyllabusModal({ isOpen, onClose, program, onSaveTopics, userRole
   };
 
   const handleDeleteTopic = (id: string) => {
-    if (confirm('Delete this topic?')) {
+    setTopicToDelete(id);
+    setIsConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (topicToDelete) {
       const updated = topics
-        .filter(t => t.id !== id)
+        .filter(t => t.id === topicToDelete ? false : true)
         .map((t, idx) => ({ ...t, order: idx + 1 }));
       setTopics(updated);
       onSaveTopics(program.id, updated);
+      setTopicToDelete(null);
     }
   };
 
@@ -218,6 +227,16 @@ export function SyllabusModal({ isOpen, onClose, program, onSaveTopics, userRole
           ))}
         </div>
       </div>
+
+      <ConfirmModal 
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Topic"
+        message="Are you sure you want to remove this topic from the syllabus?"
+        confirmText="Remove"
+        variant="danger"
+      />
     </div>
   );
 }

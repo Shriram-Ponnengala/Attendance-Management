@@ -13,6 +13,10 @@ export async function POST(request: Request) {
 
     const user = await prisma.user.findUnique({
       where: { username },
+      include: {
+        student: true,
+        coach: true,
+      },
     });
 
     if (!user) {
@@ -31,7 +35,13 @@ export async function POST(request: Request) {
       role: user.role,
     });
 
-    const response = NextResponse.json({ success: true, role: user.role });
+    const { passwordHash: _, ...userWithoutPassword } = user;
+    const response = NextResponse.json({ 
+      success: true, 
+      user: userWithoutPassword,
+      role: user.role,
+      profile: user.role === 'STUDENT' ? user.student : (user.role === 'COACH' ? user.coach : null)
+    });
     response.cookies.set({
       name: 'auth-token',
       value: token,

@@ -6,6 +6,7 @@ import { Plus, Mail, Phone, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { AddCoachModal } from './AddCoachModal';
 import { useCoaches } from '@/lib/hooks/useCoaches';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import styles from './coaches.module.css';
 
 export default function CoachesPage() {
@@ -15,27 +16,40 @@ export default function CoachesPage() {
   const [editingCoach, setEditingCoach] = useState<any>(null);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [coachToDelete, setCoachToDelete] = useState<string | null>(null);
 
-  const handleSaveCoach = (data: any) => {
+  const handleSaveCoach = async (data: any) => {
+    const { 
+      photo, countryCode, mobile, bio, ...rest 
+    } = data;
+
     const coachData = {
-      ...data,
-      specialization: data.bio || 'Coach',
-      phone: `${data.countryCode} ${data.mobile}`,
-      initials: (data.firstName[0] + data.lastName[0]).toUpperCase(),
+      ...rest,
+      countryCode,
+      mobile,
+      bio,
+      specialization: bio || 'Coach',
+      username: data.username || data.email, // Ensure username is present
     };
 
-    if (editingCoach) {
-      updateCoach(editingCoach.id, coachData);
-      setToastMessage('Coach updated successfully!');
-    } else {
-      addCoach(coachData);
-      setToastMessage('Coach registered successfully!');
+    try {
+      if (editingCoach) {
+        await updateCoach(editingCoach.id, coachData);
+        setToastMessage('Coach updated successfully!');
+      } else {
+        await addCoach(coachData);
+        setToastMessage('Coach registered successfully!');
+      }
+      setIsModalOpen(false);
+      setEditingCoach(null);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (error: any) {
+      setToastMessage(error.message || 'Failed to save coach profile');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
     }
-
-    setIsModalOpen(false);
-    setEditingCoach(null);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
   };
 
   const handleEdit = (e: React.MouseEvent, coach: any) => {
@@ -46,16 +60,17 @@ export default function CoachesPage() {
 
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this coach?')) {
-      try {
-        deleteCoach(id);
-        setToastMessage('Coach deleted successfully!');
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 3000);
-      } catch (error) {
-        console.error('Delete failed:', error);
-        alert('Failed to delete coach. Your storage might be full.');
-      }
+    setCoachToDelete(id);
+    setIsConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (coachToDelete) {
+      deleteCoach(coachToDelete);
+      setToastMessage('Coach deleted successfully!');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      setCoachToDelete(null);
     }
   };
 
@@ -140,6 +155,16 @@ export default function CoachesPage() {
           {toastMessage}
         </div>
       )}
+
+      <ConfirmModal 
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Coach"
+        message="Are you sure you want to delete this coach profile? This action is permanent."
+        confirmText="Delete Coach"
+        variant="danger"
+      />
     </div>
   );
 }

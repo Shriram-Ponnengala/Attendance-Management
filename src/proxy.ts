@@ -6,8 +6,14 @@ export async function proxy(request: NextRequest) {
   const token = request.cookies.get('auth-token')?.value;
   const { pathname } = request.nextUrl;
 
-  // Public paths
-  if (pathname === '/' || pathname.startsWith('/api/auth') || pathname === '/api/setup') {
+  // Public paths (chess-test and socket endpoint are intentionally public)
+  if (
+    pathname === '/' ||
+    pathname.startsWith('/api/auth') ||
+    pathname === '/api/setup' ||
+    pathname.startsWith('/api/socket') ||
+    pathname.startsWith('/chess-test')
+  ) {
     if (token && pathname === '/') {
       // Redirect authenticated users away from login
       try {
@@ -60,5 +66,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!_next/static|_next/image|api/socket|favicon.ico).*)'],
 };

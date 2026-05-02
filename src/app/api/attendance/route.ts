@@ -36,9 +36,18 @@ export async function POST(request: Request) {
 
     const attendanceDate = new Date(date);
 
+    // Ensure all studentIds are Student.id, not User.id
+    const resolvedRecords = await Promise.all(records.map(async (record: any) => {
+      const studentProfile = await prisma.student.findUnique({ where: { userId: record.studentId } });
+      return {
+        ...record,
+        studentId: studentProfile ? studentProfile.id : record.studentId
+      };
+    }));
+
     // Use a transaction to update multiple records
     const result = await prisma.$transaction(
-      records.map((record: any) =>
+      resolvedRecords.map((record: any) =>
         prisma.attendance.upsert({
           where: {
             classId_studentId_date: {

@@ -38,14 +38,14 @@ export function BatchModal({ isOpen, onClose, onSave, initialData }: BatchModalP
       document.body.style.overflow = 'hidden';
       if (initialData) {
         setFormData({
-          name: initialData.name,
-          program: initialData.program,
+          name: initialData.name || '',
+          program: initialData.program || '',
           coachId: initialData.coachId || '',
-          type: initialData.type,
-          startDate: initialData.startDate,
-          days: initialData.days,
-          startTime: initialData.startTime,
-          endTime: initialData.endTime
+          type: initialData.type || 'Group',
+          startDate: initialData.startDate || '',
+          days: initialData.days || [],
+          startTime: initialData.startTime || '',
+          endTime: initialData.endTime || ''
         });
       } else {
         setFormData({

@@ -13,19 +13,35 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
+    let { name, coachId, ...updateData } = body;
     
-    // Only admins can change coach or program
-    // Coaches can maybe change status or timing (depending on policy, but let's allow for now)
-    
+    // Map 'name' to 'className' for database compatibility
+    const prismaData: any = {
+      ...updateData,
+      ...(name ? { className: name } : {})
+    };
+
+    // Ensure coachId is the Coach.id, not User.id if provided
+    if (coachId) {
+      const coachByUserId = await prisma.coach.findUnique({ where: { userId: coachId } });
+      prismaData.coachId = coachByUserId ? coachByUserId.id : coachId;
+    }
+
     const updated = await prisma.class.update({
       where: { id },
-      data: body,
+      data: prismaData,
       include: {
-        coach: { select: { username: true } },
+        coach: { include: { user: { select: { username: true } } } },
       },
     });
 
-    return NextResponse.json(updated);
+    // Flatten for response consistency
+    const responseData = {
+      ...updated,
+      coach: updated.coach.user.username
+    };
+
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('Update batch error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

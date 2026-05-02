@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { SyllabusModal } from './SyllabusModal';
 import { AddProgramModal } from './AddProgramModal';
 import { usePrograms } from '@/lib/hooks/usePrograms';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import styles from './programs.module.css';
 
 export default function ProgramsPage() {
@@ -17,6 +18,8 @@ export default function ProgramsPage() {
   const [userRole, setUserRole] = useState<'ADMIN' | 'COACH' | 'STUDENT'>('ADMIN');
   const [studentEnrolledId, setStudentEnrolledId] = useState<number>(1);
   const [activeMenu, setActiveMenu] = useState<number | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [programToDelete, setProgramToDelete] = useState<number | null>(null);
 
   const handleViewSyllabus = (prog: any) => {
     if (userRole === 'STUDENT' && prog.id !== studentEnrolledId) return;
@@ -49,10 +52,16 @@ export default function ProgramsPage() {
   };
 
   const handleDeleteProgram = (id: number) => {
-    if (confirm('Are you sure you want to delete this program?')) {
-      deleteProgram(id);
-    }
+    setProgramToDelete(id);
+    setIsConfirmOpen(true);
     setActiveMenu(null);
+  };
+
+  const confirmDelete = () => {
+    if (programToDelete !== null) {
+      deleteProgram(programToDelete);
+      setProgramToDelete(null);
+    }
   };
 
   const handleMove = (id: number, direction: 'up' | 'down') => {
@@ -173,6 +182,16 @@ export default function ProgramsPage() {
         onClose={() => { setIsAddModalOpen(false); setEditingProgram(null); }}
         onSave={handleAddProgram}
         initialData={editingProgram}
+      />
+
+      <ConfirmModal 
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Program"
+        message="Are you sure you want to delete this program? This action cannot be undone."
+        confirmText="Delete"
+        variant="danger"
       />
     </div>
   );

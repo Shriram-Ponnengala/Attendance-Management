@@ -42,6 +42,7 @@ const INITIAL_BATCHES: Batch[] = [
     startTime: '10:00',
     endTime: '11:00',
     students: ['s1'],
+    studentDetails: [],
     status: 'active',
     history: []
   },
@@ -57,6 +58,7 @@ const INITIAL_BATCHES: Batch[] = [
     startTime: '18:00',
     endTime: '19:30',
     students: ['s1', 's2'],
+    studentDetails: [],
     status: 'active',
     history: [
       {
@@ -85,7 +87,11 @@ export function useBatches() {
       const res = await fetch('/api/batches');
       if (!res.ok) throw new Error('Failed to fetch batches');
       const data = await res.json();
-      setBatches(data);
+      const mapped = data.map((b: any) => ({
+        ...b,
+        coach: typeof b.coach === 'string' ? b.coach : (b.coach?.username || 'No Coach')
+      }));
+      setBatches(mapped);
       setIsLoaded(true);
     } catch (err: any) {
       setError(err.message);
@@ -106,11 +112,15 @@ export function useBatches() {
       });
       if (!res.ok) throw new Error('Failed to create batch');
       const newBatch = await res.json();
-      setBatches(prev => [newBatch, ...prev]);
+      const flattened = {
+        ...newBatch,
+        coach: typeof newBatch.coach === 'string' ? newBatch.coach : (newBatch.coach?.username || 'No Coach')
+      };
+      setBatches(prev => [flattened, ...prev]);
       return newBatch.id;
     } catch (err: any) {
-      alert(err.message);
-      return null;
+      console.error('[Hook] useBatches: Create failed:', err.message);
+      throw err;
     }
   };
 
@@ -124,7 +134,8 @@ export function useBatches() {
       if (!res.ok) throw new Error('Failed to update batch');
       setBatches(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
     } catch (err: any) {
-      alert(err.message);
+      console.error('[Hook] useBatches: Update failed:', err.message);
+      throw err;
     }
   };
 
@@ -136,7 +147,8 @@ export function useBatches() {
       if (!res.ok) throw new Error('Failed to delete batch');
       setBatches(prev => prev.filter(b => b.id !== id));
     } catch (err: any) {
-      alert(err.message);
+      console.error('[Hook] useBatches: Delete failed:', err.message);
+      throw err;
     }
   };
 
@@ -155,7 +167,8 @@ export function useBatches() {
         return b;
       }));
     } catch (err: any) {
-      alert(err.message);
+      console.error('[Hook] useBatches: Enroll failed:', err.message);
+      throw err;
     }
   };
 
@@ -174,7 +187,8 @@ export function useBatches() {
         return b;
       }));
     } catch (err: any) {
-      alert(err.message);
+      console.error('[Hook] useBatches: Unenroll failed:', err.message);
+      throw err;
     }
   };
 

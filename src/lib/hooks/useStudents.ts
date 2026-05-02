@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 
 export interface Student {
   id: string;
+  userId: string;
   firstName: string;
   middleName?: string;
   lastName: string;
@@ -88,21 +89,32 @@ export function useStudents() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   const fetchStudents = async () => {
+    console.log('[Hook] useStudents: Fetching students from API...');
     try {
       const res = await fetch('/api/users?role=STUDENT');
-      if (!res.ok) throw new Error('Failed to fetch students');
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to fetch students');
+      }
       const data = await res.json();
-      const mapped = data.map((u: any) => ({
-        ...u,
-        name: `${u.firstName || ''} ${u.middleName ? u.middleName + ' ' : ''}${u.lastName || ''}`.trim() || u.username,
-        parentName: `${u.parentFirstName || ''} ${u.parentMiddleName ? u.parentMiddleName + ' ' : ''}${u.parentLastName || ''}`.trim(),
-        memberSince: u.createdAt ? u.createdAt.split('T')[0] : '',
-        status: u.status || 'active'
-      }));
+      console.log(`[Hook] useStudents: Successfully fetched ${data.length} students`);
+      const mapped = data.map((u: any) => {
+        const studentProfile = u.student || {};
+        return {
+          ...u,
+          ...studentProfile,
+          id: studentProfile.id, // Primary ID is now student.id
+          userId: u.id,         // Keep userId for API calls
+          name: `${u.firstName || ''} ${u.middleName ? u.middleName + ' ' : ''}${u.lastName || ''}`.trim() || u.username,
+          parentName: `${studentProfile.parentFirstName || ''} ${studentProfile.parentMiddleName ? studentProfile.parentMiddleName + ' ' : ''}${studentProfile.parentLastName || ''}`.trim(),
+          memberSince: u.createdAt ? u.createdAt.split('T')[0] : '',
+          status: u.status || 'active'
+        };
+      });
       setStudents(mapped);
       setIsLoaded(true);
     } catch (e) {
-      console.error('Fetch students error:', e);
+      console.error('[Hook] useStudents: Fetch error:', e);
       setIsLoaded(true);
     }
   };
@@ -112,6 +124,7 @@ export function useStudents() {
   }, []);
 
   const addStudent = async (studentData: Omit<Student, 'id' | 'name' | 'parentName' | 'memberSince' | 'status'>) => {
+    console.log('[Hook] useStudents: Adding student...', studentData.email);
     try {
       const res = await fetch('/api/users', {
         method: 'POST',
@@ -124,19 +137,24 @@ export function useStudents() {
       });
       if (!res.ok) {
         const err = await res.json();
+        console.error('[Hook] useStudents: Add failed:', err.error);
         throw new Error(err.error || 'Failed to add student');
       }
+      console.log('[Hook] useStudents: Student added successfully');
       await fetchStudents();
       return true;
     } catch (error: any) {
-      alert(error.message);
-      return false;
+      console.error('[Hook] useStudents: Add error:', error.message);
+      throw error;
     }
   };
 
   const updateStudent = async (id: string, updates: Partial<Student>) => {
     try {
-      const res = await fetch(`/api/users/${id}`, {
+      const student = students.find(s => s.id === id);
+      const targetId = student ? student.userId : id;
+      
+      const res = await fetch(`/api/users/${targetId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
@@ -144,19 +162,24 @@ export function useStudents() {
       if (!res.ok) throw new Error('Failed to update student');
       await fetchStudents();
     } catch (error: any) {
-      alert(error.message);
+      console.error('[Hook] useStudents: Update error:', error.message);
+      throw error;
     }
   };
 
   const deleteStudent = async (id: string) => {
     try {
-      const res = await fetch(`/api/users/${id}`, {
+      const student = students.find(s => s.id === id);
+      const targetId = student ? student.userId : id;
+
+      const res = await fetch(`/api/users/${targetId}`, {
         method: 'DELETE',
       });
       if (!res.ok) throw new Error('Failed to delete student');
       setStudents(prev => prev.filter(s => s.id !== id));
     } catch (error: any) {
-      alert(error.message);
+      console.error('[Hook] useStudents: Delete error:', error.message);
+      throw error;
     }
   };
 

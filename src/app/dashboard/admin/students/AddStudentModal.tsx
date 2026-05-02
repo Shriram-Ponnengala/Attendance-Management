@@ -116,12 +116,17 @@ export function AddStudentModal({ isOpen, onClose, onSave, initialData }: AddStu
 
   const handleSave = () => {
     if (validate()) {
-      // Remap field names to match useStudents hook expectations
+      // Remap field names and clean up the object for the database
+      const { 
+        studentFirstName, studentMiddleName, studentLastName,
+        ...rest 
+      } = formData;
+
       const submittedData = {
-        ...formData,
-        firstName: formData.studentFirstName,
-        middleName: formData.studentMiddleName,
-        lastName: formData.studentLastName,
+        ...rest,
+        firstName: studentFirstName,
+        middleName: studentMiddleName,
+        lastName: studentLastName,
       };
       onSave(submittedData);
     }

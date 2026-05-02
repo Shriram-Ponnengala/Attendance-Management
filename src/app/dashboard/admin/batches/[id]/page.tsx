@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, User, BookOpen, Plus, X as XIcon, ClipboardCheck } from 'lucide-react';
-import { useBatches, MOCK_STUDENTS } from '@/lib/hooks/useBatches';
+import { useBatches } from '@/lib/hooks/useBatches';
+import { useStudents } from '@/lib/hooks/useStudents';
 import { BatchModal } from '../BatchModal';
 import { MarkAttendanceModal } from './MarkAttendanceModal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
@@ -13,6 +14,7 @@ export default function BatchDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { batches, isLoaded, updateBatch, deleteBatch, enrollStudent, unenrollStudent, addHistoryRecord } = useBatches();
+  const { students: allStudents, isLoaded: studentsLoaded } = useStudents();
   
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isMarkAttendanceOpen, setIsMarkAttendanceOpen] = useState(false);
@@ -23,7 +25,7 @@ export default function BatchDetailPage() {
   const batchId = params.id as string;
   const batch = batches.find(b => b.id === batchId);
 
-  if (!isLoaded) return <div className={styles.container}>Loading...</div>;
+  if (!isLoaded || !studentsLoaded) return <div className={styles.container}>Loading...</div>;
   
   if (!batch) {
     return (
@@ -37,8 +39,8 @@ export default function BatchDetailPage() {
   }
 
   const safeStudents = Array.isArray(batch.students) ? batch.students : [];
-  const enrolledStudents = MOCK_STUDENTS.filter(s => safeStudents.includes(s.id));
-  const availableStudents = MOCK_STUDENTS.filter(s => !safeStudents.includes(s.id));
+  const enrolledStudents = allStudents.filter(s => safeStudents.includes(s.id));
+  const availableStudents = allStudents.filter(s => !safeStudents.includes(s.id));
 
   const handleEditSave = (data: any) => {
     updateBatch(batch.id, data);
@@ -273,8 +275,8 @@ export default function BatchDetailPage() {
         onConfirm={handleConfirmDelete}
         title="Delete Batch"
         message="Are you sure you want to delete this batch? All history records for this batch will be lost. Students will remain in the system but will be unenrolled from this batch."
-        confirmLabel="Delete Batch"
-        confirmVariant="primary"
+        confirmText="Delete Batch"
+        variant="danger"
       />
     </div>
   );

@@ -30,19 +30,18 @@ export function Sidebar({ role, username }: SidebarProps) {
     { name: 'Coaches', href: '/dashboard/admin/coaches', icon: GraduationCap },
     { name: 'Batches', href: '/dashboard/admin/batches', icon: Layers },
     { name: 'Users', href: '/dashboard/admin/users', icon: Users },
+    { name: 'Chess Test', href: '/chess-test', icon: Layers },
     { name: 'Settings', href: '/dashboard/admin/settings', icon: Settings },
   ];
 
   const coachLinks = [
     { name: 'Dashboard', href: '/dashboard/coach', icon: LayoutDashboard },
     { name: 'Attendance', href: '/dashboard/coach/attendance', icon: Users },
-    { name: 'Materials', href: '/dashboard/coach/materials', icon: BookOpen },
   ];
 
   const studentLinks = [
     { name: 'Dashboard', href: '/dashboard/student', icon: LayoutDashboard },
     { name: 'Attendance', href: '/dashboard/student/attendance', icon: Users },
-    { name: 'Materials', href: '/dashboard/student/materials', icon: BookOpen },
   ];
 
   const links = role === 'ADMIN' ? adminLinks : role === 'COACH' ? coachLinks : studentLinks;
@@ -78,7 +77,8 @@ export function Sidebar({ role, username }: SidebarProps) {
       <nav className={styles.nav}>
         {links.map((link) => {
           const Icon = link.icon;
-          const isActive = pathname === link.href || pathname.startsWith(link.href + '/');
+          const isDashboardRoot = link.href === '/dashboard/admin' || link.href === '/dashboard/coach' || link.href === '/dashboard/student';
+          const isActive = isDashboardRoot ? pathname === link.href : (pathname === link.href || pathname.startsWith(link.href + '/'));
           return (
             <Link 
               key={link.name} 

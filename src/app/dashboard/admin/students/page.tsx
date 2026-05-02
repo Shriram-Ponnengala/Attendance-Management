@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { AddStudentModal } from './AddStudentModal';
 import { useStudents } from '@/lib/hooks/useStudents';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import styles from './students.module.css';
 
 export default function StudentsPage() {
@@ -18,6 +19,8 @@ export default function StudentsPage() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
 
   // Filter state
   const [search, setSearch] = useState('');
@@ -35,19 +38,25 @@ export default function StudentsPage() {
     return matchesSearch && matchesStatus && matchesProgram;
   });
 
-  const handleSaveStudent = (data: any) => {
-    if (editingStudent) {
-      updateStudent(editingStudent.id, data);
-      setToastMessage('Student updated successfully!');
-    } else {
-      addStudent(data);
-      setToastMessage('Student registered successfully!');
+  const handleSaveStudent = async (data: any) => {
+    try {
+      if (editingStudent) {
+        await updateStudent(editingStudent.id, data);
+        setToastMessage('Student updated successfully!');
+      } else {
+        await addStudent(data);
+        setToastMessage('Student registered successfully!');
+      }
+      
+      setIsModalOpen(false);
+      setEditingStudent(null);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (error: any) {
+      setToastMessage(error.message || 'Failed to save student profile');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
     }
-    
-    setIsModalOpen(false);
-    setEditingStudent(null);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
   };
 
   const handleEdit = (e: React.MouseEvent, student: any) => {
@@ -59,18 +68,19 @@ export default function StudentsPage() {
 
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    if (window.confirm('Are you sure you want to delete this student?')) {
-      try {
-        deleteStudent(id);
-        setToastMessage('Student deleted successfully!');
-        setShowToast(true);
-        setTimeout(() => setShowToast(false), 3000);
-      } catch (error) {
-        console.error('Delete failed:', error);
-        alert('Failed to delete student. Your storage might be full.');
-      }
-    }
+    setStudentToDelete(id);
+    setIsConfirmOpen(true);
     setActiveMenu(null);
+  };
+
+  const confirmDelete = () => {
+    if (studentToDelete) {
+      deleteStudent(studentToDelete);
+      setToastMessage('Student deleted successfully!');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      setStudentToDelete(null);
+    }
   };
 
   const toggleMenu = (e: React.MouseEvent, id: string) => {
@@ -212,6 +222,16 @@ export default function StudentsPage() {
           {toastMessage}
         </div>
       )}
+
+      <ConfirmModal 
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete Student"
+        message="Are you sure you want to delete this student? This will also remove their enrollment data."
+        confirmText="Delete Student"
+        variant="danger"
+      />
     </div>
   );
 }

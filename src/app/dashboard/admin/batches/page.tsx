@@ -7,18 +7,29 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useBatches } from '@/lib/hooks/useBatches';
 import { BatchModal } from './BatchModal';
+import { Toast } from '@/components/ui/Toast';
 import styles from './batches.module.css';
 
 export default function BatchesPage() {
   const router = useRouter();
   const { batches, isLoaded, addBatch } = useBatches();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
-  const handleCreateBatch = (data: any) => {
-    const newId = addBatch(data);
-    setIsModalOpen(false);
-    // Redirect to batch detail page
-    router.push(`/dashboard/admin/batches/${newId}`);
+  const handleCreateBatch = async (data: any) => {
+    try {
+      const newId = await addBatch(data);
+      if (newId) {
+        setToast({ message: 'Batch created successfully!', type: 'success' });
+        setIsModalOpen(false);
+        // Give time for toast to be seen before redirecting
+        setTimeout(() => {
+          router.push(`/dashboard/admin/batches/${newId}`);
+        }, 1000);
+      }
+    } catch (error) {
+      setToast({ message: 'Failed to create batch. Please check your data.', type: 'error' });
+    }
   };
 
   if (!isLoaded) return <div className={styles.container}>Loading...</div>;
@@ -110,6 +121,14 @@ export default function BatchesPage() {
         onClose={() => setIsModalOpen(false)}
         onSave={handleCreateBatch}
       />
+
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
     </div>
   );
 }

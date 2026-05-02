@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
 import { useUsers, User } from '@/lib/hooks/useUsers';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { Toast } from '@/components/ui/Toast';
 import styles from './users.module.css';
 
 export default function UsersPage() {
@@ -20,6 +22,10 @@ export default function UsersPage() {
     role: 'STUDENT',
     password: ''
   });
+
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     if (editingUser) {
@@ -43,8 +49,15 @@ export default function UsersPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this user?')) {
-      deleteUser(id);
+    setUserToDelete(id);
+    setIsConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (userToDelete) {
+      deleteUser(userToDelete);
+      setToast({ message: 'User deleted successfully!', type: 'success' });
+      setUserToDelete(null);
     }
   };
 
@@ -56,14 +69,14 @@ export default function UsersPage() {
         role: formData.role as any,
         password: formData.password || undefined
       });
-      alert('User updated successfully!');
+      setToast({ message: 'User updated successfully!', type: 'success' });
     } else {
       addUser({ 
         username: formData.username, 
         role: formData.role as any,
         password: formData.password
       });
-      alert('User created successfully!');
+      setToast({ message: 'User created successfully!', type: 'success' });
     }
     setIsModalOpen(false);
     setEditingUser(null);
@@ -214,6 +227,24 @@ export default function UsersPage() {
           </Button>
         </form>
       </Modal>
+
+      {toast && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={() => setToast(null)} 
+        />
+      )}
+
+      <ConfirmModal 
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={confirmDelete}
+        title="Delete User"
+        message="Are you sure you want to delete this user? This will permanently remove their access to the platform."
+        confirmText="Delete User"
+        variant="danger"
+      />
     </div>
   );
 }

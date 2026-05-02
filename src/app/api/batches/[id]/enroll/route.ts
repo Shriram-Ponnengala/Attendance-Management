@@ -12,7 +12,13 @@ export async function POST(
     }
 
     const { id: classId } = await params;
-    const { studentId } = await request.json();
+    let { studentId } = await request.json();
+
+    // Resolve studentId to Student.id if it's a User ID
+    const studentProfile = await prisma.student.findUnique({ where: { userId: studentId } });
+    if (studentProfile) {
+      studentId = studentProfile.id;
+    }
 
     const enrollment = await prisma.enrollment.create({
       data: {
@@ -39,7 +45,13 @@ export async function DELETE(
     }
 
     const { id: classId } = await params;
-    const { studentId } = await request.json();
+    let { studentId } = await request.json();
+
+    // Resolve studentId to Student.id if it's a User ID
+    const studentProfile = await prisma.student.findUnique({ where: { userId: studentId } });
+    if (studentProfile) {
+      studentId = studentProfile.id;
+    }
 
     await prisma.enrollment.delete({
       where: {
